@@ -1,0 +1,1904 @@
+OBJECT Codeunit 8611 Migration Management
+{
+  OBJECT-PROPERTIES
+  {
+    Date=12/01/11;
+    Time=[ 2:01:33 AM];
+    Version List=NAVW16.00.01,AP6.02.001;
+  }
+  PROPERTIES
+  {
+    TableNo=8614;
+    OnRun=BEGIN
+            InsertMatrixRecord(Rec,FALSE);
+          END;
+
+  }
+  CODE
+  {
+    VAR
+      Text000@1000000000 : TextConst 'ENU=The value of key field %1 has not been filled in for Record %2.;ESM=El valor del campo de clave %1 no se ha cumplimentado para el registro %2.;FRC=La valeur du champ cl‚ %1 de l''enregistrement %2 n''a pas ‚t‚ inscrite.;ENC=The value of key field %1 has not been filled in for Record %2.';
+      Text001@1010 : TextConst 'ENU=%1 %2 can only contain %3 characters (%4).;ESM=%1 %2 puede contener s¢lo %3 caracteres. (%4);FRC=%1 %2 ne peut contenir que %3 caractŠres (%4).;ENC=%1 %2 can only contain %3 characters (%4).';
+      Text002@1009 : TextConst 'ENU=%1 is not a supported datatype.;ESM=%1 no es un tipo de datos admitidos.;FRC=%1 n''est pas d''un type de donn‚es pris en charge.;ENC=%1 is not a supported datatype.';
+      Text003@1008 : TextConst 'ENU=%1 is not a valid Date.;ESM=%1 no es un valor Date v lido.;FRC=%1 n''est pas d''un type Date valide.;ENC=%1 is not a valid Date.';
+      Text004@1007 : TextConst 'ENU=%1 is not a valid Dateformula.;ESM=%1 no es un valor Dateformula v lido.;FRC=%1 n''est pas d''un type Dateformula valide.;ENC=%1 is not a valid Dateformula.';
+      Text005@1006 : TextConst 'ENU=%1 is not a valid DateTime.;ESM=%1 no es un valor DateTime v lido.;FRC=%1 n''est pas d''un type DateTime valide.;ENC=%1 is not a valid DateTime.';
+      Text006@1005 : TextConst 'ENU=%1 is not a valid Time.;ESM=%1 no es un valor Time v lido.;FRC=%1 n''est pas d''un type Time valide.;ENC=%1 is not a valid Time.';
+      Text007@1004 : TextConst 'ENU=%1 is not a valid Duration.;ESM=%1 no es un valor Duration v lido.;FRC=%1 n''est pas d''un type Duration valide.;ENC=%1 is not a valid Duration.';
+      Text008@1003 : TextConst 'ENU=%1 is not a valid Integer.;ESM=%1 no es un valor Integer v lido.;FRC=%1 n''est pas d''un type Integer valide.;ENC=%1 is not a valid Integer.';
+      Text009@1002 : TextConst 'ENU=%1 is not a valid BigInteger.;ESM=%1 no es un valor BigInteger v lido.;FRC=%1 n''est pas d''un type BigInteger valide.;ENC=%1 is not a valid BigInteger.';
+      Text010@1001 : TextConst 'ENU=%1 is not a valid Decimal.;ESM=%1 no es un valor Decimal v lido.;FRC=%1 n''est pas d''un type Decimal valide.;ENC=%1 is not a valid Decimal.';
+      Text011@1000 : TextConst 'ENU=%1 is not a valid GUID (Globally Unique Identifier).;ESM=%1 no es un valor GUID (Globally Unique Identifier) v lido.;FRC=%1 n''est pas d''un type GUID (Globally Unique Identifier) valide;ENC=%1 is not a valid GUID (Globally Unique Identifier).';
+      Text012@1011 : TextConst 'ENU=%1 is not a valid option.\Valid options are %2.;ESM=%1 no es una opci¢n v lida.\Las opciones v lidas son %2.;FRC=%1 n''est pas une option valide.\Les options valides sont %2.;ENC=%1 is not a valid option.\Valid options are %2.';
+      Text013@1012 : TextConst 'ENU=%1 is not a valid boolean.;ESM=%1 no es un valor booleano v lido.;FRC=%1 n''est pas d''un type Boolean valide.;ENC=%1 is not a valid boolean.';
+      SetupDataXML@1013 : Automation "{F5078F18-C551-11D3-89B9-0000F81FE221} 6.0:{88D96A05-F192-11D4-A65F-0040963251E5}:'Microsoft XML, v6.0'.DOMDocument60";
+      SchemaXML@1026 : Automation "{F5078F18-C551-11D3-89B9-0000F81FE221} 6.0:{88D96A05-F192-11D4-A65F-0040963251E5}:'Microsoft XML, v6.0'.DOMDocument60";
+      XlApp@1024 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00024500-0000-0000-C000-000000000046}:Unknown Automation Server.Application";
+      XlBook@1023 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020819-0000-0000-C000-000000000046}:Unknown Automation Server.Workbook";
+      XlSheet@1022 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020820-0000-0000-C000-000000000046}:Unknown Automation Server.Worksheet";
+      Window@1016 : Dialog;
+      ValidationErrorText@1033 : Text[250];
+      TotalNoOfTables@1015 : Integer;
+      MigratedTables@1014 : Integer;
+      Text014@1019 : TextConst 'ENU=Exporting Data...\;ESM=Exportando datos...\;FRC=Exportation des donn‚es...\;ENC=Exporting Data...\';
+      Text015@1018 : TextConst 'ENU=Table #1######################\;ESM=Tabla #1######################\;FRC=Table #1######################\;ENC=Table #1######################\';
+      Text016@1017 : TextConst 'ENU=@3################################;ESM=@3################################;FRC=@3################################;ENC=@3################################';
+      Text017@1020 : TextConst 'ENU=Importing Data...\;ESM=Importando datos...\;FRC=Importation des donn‚es...\;ENC=Importing Data...\';
+      Text018@1021 : TextConst 'ENU=Could not create XML Schema.;ESM=No se pudo crear el esquema XML.;FRC=Impossible de cr‚er le sch‚ma XML.;ENC=Could not create XML Schema.';
+      Text019@1025 : TextConst 'ENU="Could not create Excel instance. ";ESM="No se pudo crear una instancia en Excel. ";FRC="Impossible de cr‚er une instance d''Excel. ";ENC="Could not create Excel instance. "';
+      Text020@1027 : TextConst 'ENU=Excel does not contain XML mappings.;ESM=Excel no contiene asignaciones XML.;FRC=Excel ne comporte pas de correspondances XML.;ENC=Excel does not contain XML mappings.';
+      Text021@1028 : TextConst 'ENU=Setup Data has been imported successfully.;ESM=Los datos de configuraci¢n se han importado correctamente.;FRC=Les donn‚es de configuration ont bien ‚t‚ import‚es.;ENC=Setup Data has been imported successfully.';
+      Text022@1029 : TextConst 'ENU=%1 value ''%2'' does not exist.;ESM=El valor de %1 ''%2'' no existe.;FRC=%1 valeur ''%2'' n''existe pas.;ENC=%1 value ''%2'' does not exist.';
+      ValidationFieldID@1037 : Integer;
+      CompanySetupRun@1030 : Boolean;
+      Text024@1032 : TextConst 'ENU=Creating Excel Worksheet...\;ESM=Creando hoja de Excel...\;FRC=Cr‚ation de la feuille Excel...\;ENC=Creating Excel Worksheet...\';
+      ExportToExcel@1036 : Boolean;
+      Advanced@1038 : Boolean;
+      Text026@1031 : TextConst 'ENU=Default;ESM=Predeterminado;FRC=Par d‚faut;ENC=Default';
+      Text027@1039 : TextConst 'ENU=Download;ESM=Descargar;FRC=T‚l‚charger;ENC=Download';
+      Text028@1040 : TextConst 'ENU=Excel file (*.xls)|*.xls;ESM=Archivo de Excel (*.xls)|*.xls;FRC=Fichier Excel (*.xls)|*.xls;ENC=Excel file (*.xls)|*.xls';
+      Text029@1034 : TextConst 'ENU=XML file (*.xml)|*.xml;ESM=Archivo XML (*.xml)|*.xml;FRC=Fichier XML (*.xml)|*.xml;ENC=XML file (*.xml)|*.xml';
+      SuppressMessage@1102601000 : Boolean;
+      "3TierMngt"@1041 : Codeunit 419;
+
+    PROCEDURE InsertMatrixRecord@3(MigrationRecord@1001 : Record 8614;CompanySetup@1002 : Boolean);
+    VAR
+      RecRef@1000 : RecordRef;
+    BEGIN
+      IF MigrationRecord.TableID = 0 THEN
+        EXIT;
+
+      CompanySetupRun := CompanySetup;
+
+      RecRef.OPEN(MigrationRecord.TableID);
+      RecRef.INIT;
+
+      InsertRecordWithKeyFields(RecRef,MigrationRecord);
+
+      ModifyRecordWithOtherFields(RecRef,MigrationRecord);
+
+      CompanySetupRun := FALSE;
+    END;
+
+    LOCAL PROCEDURE InsertRecordWithKeyFields@40(VAR RecRef@1000 : RecordRef;MatrixRecord@1002 : Record 8614);
+    VAR
+      MatrixData@1001 : Record 8615;
+      MigrationTableField@1007 : Record 8616;
+      RecRef1@1006 : RecordRef;
+      KeyRef@1003 : KeyRef;
+      FieldRef@1004 : FieldRef;
+      KeyFieldCount@1005 : Integer;
+    BEGIN
+      MatrixData.SETRANGE(TableID,MatrixRecord.TableID);
+      MatrixData.SETRANGE("No.",MatrixRecord."No.");
+
+      KeyRef := RecRef.KEYINDEX(1);
+      FOR KeyFieldCount := 1 TO KeyRef.FIELDCOUNT DO BEGIN
+        FieldRef := KeyRef.FIELDINDEX(KeyFieldCount);
+        ValidationFieldID := FieldRef.NUMBER;
+        MatrixData.SETRANGE(FieldID,FieldRef.NUMBER);
+        IF MatrixData.FIND('-') THEN BEGIN
+          MigrationTableField.GET(MatrixData.TableID,MatrixData.FieldID);
+          EvaluateTextToFieldRef(MatrixData.Value,FieldRef,MigrationTableField.Validate);
+        END ELSE
+          IF KeyRef.FIELDCOUNT <> 1 THEN BEGIN
+            ERROR(STRSUBSTNO(Text000,FieldRef.NAME,RecRef.NAME + ':' + FORMAT(MatrixData."No.")));
+          END
+      END;
+
+      RecRef1 := RecRef.DUPLICATE;
+
+      IF RecRef1.FIND('=') THEN BEGIN
+        RecRef := RecRef1;
+        EXIT
+      END;
+
+      RecRef.INSERT(NOT CompanySetupRun);
+    END;
+
+    LOCAL PROCEDURE ModifyRecordWithOtherFields@39(VAR RecRef@1004 : RecordRef;MatrixRecord@1005 : Record 8614);
+    VAR
+      MatrixData@1002 : Record 8615;
+      MigrationTableField@1000 : Record 8616;
+      Question@1003 : Record 8612;
+      Field@1007 : Record 2000000041;
+      QuestionnaireMgt@1006 : Codeunit 8610;
+      FieldRef@1001 : FieldRef;
+      OptionInt@1008 : Integer;
+      DateFormula@1010 : DateFormula;
+      MigrationTable@1102601000 : Record 8613;
+      DataTemplateHeader@1102601001 : Record 8618;
+      TemplateMgt@1102601002 : Codeunit 8612;
+    BEGIN
+      MatrixData.SETRANGE(TableID,MatrixRecord.TableID);
+      MatrixData.SETRANGE("No.",MatrixRecord."No.");
+      MigrationTable.GET(MatrixRecord.TableID);
+
+      IF MatrixData.FIND('-') THEN
+        REPEAT
+          ValidationFieldID := MatrixData.FieldID;
+          MigrationTableField.SETRANGE(TableID,MatrixData.TableID);
+          MigrationTableField.SETRANGE(FieldID,MatrixData.FieldID);
+          MigrationTableField.SETRANGE(Include,TRUE);
+          IF MigrationTableField.FIND('-') THEN
+            IF NOT IsKeyField(MigrationTableField.TableID,MigrationTableField.FieldID) THEN BEGIN
+              FieldRef := RecRef.FIELD(MatrixData.FieldID);
+              EvaluateTextToFieldRef(MatrixData.Value,FieldRef,MigrationTableField.Validate);
+            END;
+          IF DataTemplateHeader.GET(MigrationTable."Data Template") THEN
+            TemplateMgt.UpdateRecord(DataTemplateHeader,RecRef);
+
+        UNTIL MatrixData.NEXT = 0;
+
+      RecRef.MODIFY(NOT CompanySetupRun);
+
+      IF RecRef.NUMBER <> DATABASE::Question THEN
+        EXIT;
+
+      RecRef.SETTABLE(Question);
+
+      Field.SETRANGE(TableNo,Question.TableID);
+      Field.SETRANGE("No.",Question.FieldID);
+
+      IF Field.FIND('-') THEN BEGIN
+        IF (Field.Type = Field.Type::Option) OR (Field.Type = Field.Type::Boolean) THEN BEGIN
+          IF (Question.Answer <> '') THEN BEGIN
+            QuestionnaireMgt.GetOption(Question.Answer,Question."Answer Option",OptionInt);
+            Question."Answer Option" := QuestionnaireMgt.BuildAnswerOption(Question.TableID, Question.FieldID);
+            Question.Answer := SELECTSTR(OptionInt + 1,Question."Answer Option");
+          END ELSE BEGIN
+            Question.Answer := '';
+            Question."Answer Option" := QuestionnaireMgt.BuildAnswerOption(Question.TableID, Question.FieldID);
+          END;
+        END;
+        IF (Field.Type = Field.Type::DateFormula) THEN BEGIN
+          EVALUATE(DateFormula,'<' + Question.Answer + '>');
+          Question.Answer := FORMAT(DateFormula);
+        END;
+        Question.MODIFY;
+      END;
+    END;
+
+    PROCEDURE ValidateFieldValue@16(VAR RecRef@1015 : RecordRef;VAR FieldRef@1000 : FieldRef;Value@1001 : Text[250]);
+    VAR
+      Field@1014 : Record 2000000041;
+      OptionAsInteger@1002 : Integer;
+    BEGIN
+      Field.GET(RecRef.NUMBER,FieldRef.NUMBER);
+
+      IF Field.Type <> Field.Type::Option THEN BEGIN
+        IF Value <> '' THEN
+          EVALUATE(FieldRef,Value)
+      END ELSE
+        IF GetOption(Value,FieldRef.OPTIONCAPTION,OptionAsInteger) THEN
+          FieldRef.VALUE := OptionAsInteger;
+
+      IF NOT CompanySetupRun THEN
+        FieldRef.VALIDATE;
+    END;
+
+    PROCEDURE ValidateOptionValue@7(VAR FieldRef@1000 : FieldRef;OptionValue@1006 : Text[250]) Valid : Boolean;
+    VAR
+      StartPos@1005 : Integer;
+      OptionNo@1004 : Integer;
+      OptionValueAsInteger@1001 : Integer;
+    BEGIN
+      IF OptionValue = '' THEN
+        EXIT;
+      IF EVALUATE(OptionValueAsInteger,OptionValue) THEN BEGIN
+        StartPos := 1;
+        OptionNo := 0;
+
+        WHILE NOT (StartPos = STRLEN(FieldRef.OPTIONCAPTION) + 1) DO BEGIN
+          IF COPYSTR(FieldRef.OPTIONCAPTION,StartPos,1) = ',' THEN
+            OptionNo := OptionNo + 1;
+          StartPos := StartPos + 1;
+        END;
+
+        EXIT(NOT(OptionValueAsInteger > OptionNo));
+      END ELSE BEGIN
+        EXIT(GetOption(OptionValue,FieldRef.OPTIONCAPTION,OptionValueAsInteger))
+      END
+    END;
+
+    LOCAL PROCEDURE GetOption@20(Value@1007 : Text[250];OptionString@1006 : Text[1024];VAR OptionInteger@1002 : Integer) Valid : Boolean;
+    VAR
+      Option@1003 : Text[1024];
+      CommaPos@1004 : Integer;
+      OptionPos@1000 : Integer;
+      ValueInOptionString@1001 : Boolean;
+    BEGIN
+      IF Value = '' THEN
+        EXIT;
+      IF EVALUATE(OptionInteger,Value) THEN BEGIN
+        EXIT(TRUE);
+      END;
+
+      ValueInOptionString := FALSE;
+
+      CommaPos := STRPOS(OptionString,',');
+
+      WHILE NOT ValueInOptionString AND (CommaPos > 0) DO BEGIN
+        IF STRPOS(OptionString,',') <> 0 THEN
+          Option := COPYSTR(OptionString,1,STRPOS(OptionString,',')-1)
+        ELSE
+          Option := OptionString;
+        IF Option = Value THEN
+          ValueInOptionString := TRUE
+        ELSE
+          OptionPos := OptionPos + 1;
+        OptionString := DELSTR(OptionString,1,CommaPos);
+        CommaPos := STRPOS(OptionString,',');
+      END;
+
+      IF OptionString = Value THEN
+        ValueInOptionString := TRUE;
+
+      OptionInteger := OptionPos;
+      EXIT(ValueInOptionString);
+    END;
+
+    PROCEDURE GetOptionString@27(VAR FieldRef@1000 : FieldRef;Value@1001 : Text[250]) : Text[250];
+    VAR
+      OptionIsInteger@1002 : Integer;
+    BEGIN
+      IF Value = '' THEN
+        Value := '1';
+      IF NOT EVALUATE(OptionIsInteger,Value) THEN
+        EXIT(Value);
+      OptionIsInteger := OptionIsInteger + 1;
+      EXIT(SELECTSTR(OptionIsInteger,FORMAT(FieldRef.OPTIONCAPTION)));
+    END;
+
+    PROCEDURE RunSetupDataFieldRelation@1(VAR MigrationTable@1009 : Record 8613);
+    VAR
+      ObjectField@1006 : Record 2000000041;
+      CheckTable@1000 : Record 2000000038;
+      MigrationRecord@1011 : Record 8614;
+      MigrationRecord1@1013 : Record 8614;
+      MigrationFields@1008 : Record 8616;
+      MigrationData@1010 : Record 8615;
+      RecRef@1012 : RecordRef;
+      RecRef1@1005 : RecordRef;
+      FieldRef@1001 : FieldRef;
+      FieldRef1@1004 : FieldRef;
+      FieldRef2@1003 : FieldRef;
+      KeyRef1@1007 : KeyRef;
+      i@1002 : Integer;
+    BEGIN
+      RecRef.OPEN(MigrationTable.TableID);
+      IF RecRef.FIND('-') THEN
+        REPEAT
+          MigrationRecord1.SETRANGE(TableID,RecRef.NUMBER);
+          IF MigrationRecord1.FIND('+') THEN
+            MigrationRecord."No." := MigrationRecord1."No." + 1
+          ELSE
+            MigrationRecord."No." := 1;
+          MigrationRecord.TableID := RecRef.NUMBER;
+          MigrationRecord.INSERT;
+          MigrationFields.SETRANGE(TableID,MigrationRecord.TableID);
+          IF MigrationFields.FIND('-') THEN
+            REPEAT
+              FieldRef := RecRef.FIELD(MigrationFields.FieldID);
+              MigrationData.TableID := MigrationRecord.TableID;
+              MigrationData."No." := MigrationRecord."No.";
+              MigrationData.FieldID := MigrationFields.FieldID;
+              MigrationData.Value := FORMAT(FieldRef.VALUE);
+              MigrationData.INSERT;
+              IF FORMAT(FieldRef.VALUE) <> '' THEN
+                IF ObjectField.GET(RecRef.NUMBER,FieldRef.NUMBER) THEN BEGIN
+                  IF (ObjectField.RelationTableNo <> 0) AND (ObjectField.RelationTableNo <> ObjectField.TableNo) AND
+                     CheckTable.GET(CheckTable."Object Type"::Table,ObjectField.RelationTableNo)
+                  THEN BEGIN
+                    RecRef1.OPEN(ObjectField.RelationTableNo);
+                    KeyRef1 := RecRef1.KEYINDEX(1);
+                    IF KeyRef1.FIELDCOUNT = 1 THEN BEGIN
+                      IF ObjectField.RelationFieldNo <> 0 THEN
+                        FieldRef1 := RecRef1.FIELD(ObjectField.RelationFieldNo)
+                      ELSE
+                        FieldRef1 := KeyRef1.FIELDINDEX(1);
+                      FieldRef2 := KeyRef1.FIELDINDEX(1);
+                      IF (STRLEN(DELCHR(FORMAT(FieldRef.VALUE),'=','&|.<>')) = STRLEN(FORMAT(FieldRef.VALUE))) AND
+                         (STRLEN(FORMAT(FieldRef.VALUE)) > 0) AND (FORMAT(FieldRef.VALUE) <> '0') AND
+                         (ObjectField.RelationTableNo < (DATABASE::Table2000000000 - 1))
+                      THEN
+                        IF FieldRef1.NUMBER = FieldRef2.NUMBER THEN BEGIN
+                          FieldRef1.VALUE := FieldRef.VALUE;
+                           IF NOT RecRef1.FIND('=') THEN BEGIN
+                             FieldError(MigrationData,STRSUBSTNO(Text022,FieldRef.CAPTION,FieldRef.VALUE));
+                           END;
+                        END;
+                    END;
+                    RecRef1.CLOSE;
+                  END;
+                END;
+            UNTIL MigrationFields.NEXT = 0;
+          MigrationRecord1.GET(MigrationRecord.TableID,MigrationRecord."No.");
+          IF NOT MigrationRecord1.Invalid THEN
+            MigrationRecord.DELETE(TRUE);
+        UNTIL RecRef.NEXT = 0;
+    END;
+
+    PROCEDURE ValidateTableRelation@25(VAR FieldRef@1000 : FieldRef) : Boolean;
+    VAR
+      Field@1002 : Record 2000000041;
+      RecRef@1001 : RecordRef;
+      RecRef2@1003 : RecordRef;
+      FieldRef2@1004 : FieldRef;
+      KeyRef2@1005 : KeyRef;
+      KeyFieldCount@1006 : Integer;
+    BEGIN
+      IF FORMAT(FieldRef.VALUE) = '' THEN
+        EXIT(TRUE);
+
+      RecRef := FieldRef.RECORD;
+      IF Field.GET(RecRef.NUMBER,FieldRef.NUMBER) THEN BEGIN
+        IF Field.RelationTableNo <> 0 THEN BEGIN
+          IF Field.RelationFieldNo <> 0 THEN BEGIN
+            RecRef2.OPEN(Field.RelationTableNo);
+            IF NOT RecRef2.FIND('-') THEN
+              EXIT(FALSE);
+            FieldRef2 := RecRef2.FIELD(Field.RelationFieldNo);
+            IF (FieldRef2.TYPE <> FieldRef.TYPE) OR (FieldRef2.LENGTH <> FieldRef.LENGTH) THEN
+              EXIT(TRUE);
+            FieldRef2.VALUE := FieldRef.VALUE;
+          END ELSE BEGIN
+            RecRef2.OPEN(Field.RelationTableNo);
+            IF NOT RecRef2.FIND('-') THEN
+              EXIT(FALSE);
+            KeyRef2 := RecRef2.KEYINDEX(1);
+            IF KeyRef2.FIELDCOUNT > 1 THEN
+              EXIT(TRUE);
+            FieldRef2 := KeyRef2.FIELDINDEX(1);
+            IF (FieldRef2.TYPE <> FieldRef.TYPE) OR (FieldRef2.LENGTH <> FieldRef.LENGTH) THEN
+              EXIT(TRUE);
+            FieldRef2.VALUE := FieldRef.VALUE;
+          END;
+          IF NOT RecRef2.FIND('=') THEN
+            EXIT(FALSE)
+          ELSE
+            EXIT(TRUE);
+        END ELSE
+          EXIT(TRUE)
+      END ELSE
+        EXIT(TRUE);
+    END;
+
+    PROCEDURE EvaluateValue@5(VAR FldRef@1000 : FieldRef;Value@1002 : Text[250]) ErrorText : Text[250];
+    VAR
+      Field@1001 : Record 2000000041;
+      RecordRef@1003 : RecordRef;
+      Date@1012 : Date;
+      DateTime@1011 : DateTime;
+      Time@1014 : Time;
+      Integer@1010 : Integer;
+      BigInteger@1009 : BigInteger;
+      Guid@1013 : GUID;
+      Option@1015 : Option;
+      Duration@1008 : Duration;
+      DateFormula@1007 : DateFormula;
+      Decimal@1006 : Decimal;
+      Code@1005 : Code[250];
+      Boolean@1004 : Boolean;
+    BEGIN
+      EVALUATE(Field.Type,FORMAT(FldRef.TYPE));
+
+      IF (Value <> '') AND NOT IsNormalField(FldRef) THEN
+        EXIT(Text002);
+
+      CASE Field.Type OF
+        Field.Type::Text:
+          BEGIN
+            RecordRef := FldRef.RECORD;
+            Field.GET(RecordRef.NUMBER,FldRef.NUMBER);
+            IF STRLEN(Value) > Field.Len THEN
+              EXIT(STRSUBSTNO(Text001,FldRef.RECORD.CAPTION,FldRef.CAPTION,Field.Len, Value));
+            FldRef.VALUE := Value;
+          END;
+        Field.Type::Code:
+          BEGIN
+            Code := Value;
+            RecordRef := FldRef.RECORD;
+            Field.GET(RecordRef.NUMBER,FldRef.NUMBER);
+            IF STRLEN(Value) > Field.Len THEN
+              EXIT(STRSUBSTNO(Text001,FldRef.RECORD.CAPTION,FldRef.CAPTION,Field.Len, Value));
+            FldRef.VALUE := Value;
+          END;
+        Field.Type::Option:
+          BEGIN
+            IF NOT ValidateOptionValue(FldRef,Value) THEN
+              EXIT(COPYSTR(STRSUBSTNO(Text012,Value,FldRef.OPTIONCAPTION),1,250));
+            IF GetOption(Value,FldRef.OPTIONCAPTION,Integer) THEN
+              FldRef.VALUE := Integer
+            ELSE
+              EXIT(COPYSTR(STRSUBSTNO(Text012,Value,FldRef.OPTIONCAPTION),1,250));
+          END;
+        Field.Type::Date:
+          BEGIN
+            IF NOT EVALUATE(Date, Value) AND NOT EVALUATE(Date, Value, XMLFormat) THEN
+              EXIT(STRSUBSTNO(Text003,Value));
+            FldRef.VALUE := Date;
+          END;
+        Field.Type::DateFormula:
+          BEGIN
+            IF NOT EVALUATE(DateFormula, Value) AND NOT EVALUATE(DateFormula, Value, XMLFormat) THEN
+              EXIT(STRSUBSTNO(Text004,Value));
+            FldRef.VALUE := DateFormula;
+          END;
+        Field.Type::DateTime:
+          BEGIN
+            IF NOT EVALUATE(DateTime, Value) AND NOT EVALUATE(DateTime, Value, XMLFormat) THEN
+              EXIT(STRSUBSTNO(Text005,Value));
+            FldRef.VALUE := DateTime;
+          END;
+        Field.Type::Time:
+          BEGIN
+            IF NOT EVALUATE(Time, Value) AND NOT EVALUATE(Time, Value, XMLFormat) THEN
+              EXIT(STRSUBSTNO(Text006,Value));
+            FldRef.VALUE := Time;
+          END;
+        Field.Type::Duration:
+          BEGIN
+            IF NOT EVALUATE(Duration, Value) AND NOT EVALUATE(Duration, Value, XMLFormat) THEN
+              EXIT(STRSUBSTNO(Text007,Value));
+            FldRef.VALUE := Duration;
+          END;
+        Field.Type::Integer:
+          BEGIN
+            IF NOT EVALUATE(Integer, Value) AND NOT EVALUATE(Integer, Value, XMLFormat) THEN
+              EXIT(STRSUBSTNO(Text008,Value));
+            FldRef.VALUE := Integer;
+          END;
+        Field.Type::BigInteger:
+          BEGIN
+            IF NOT EVALUATE(BigInteger, Value) AND NOT EVALUATE(BigInteger, Value, XMLFormat) THEN
+              EXIT(STRSUBSTNO(Text009,Value));
+            FldRef.VALUE := BigInteger;
+          END;
+        Field.Type::Decimal:
+          BEGIN
+            IF NOT EVALUATE(Decimal, Value) AND NOT EVALUATE(Decimal, Value, XMLFormat) THEN
+              EXIT(STRSUBSTNO(Text010,Value));
+            FldRef.VALUE := Decimal;
+          END;
+        Field.Type::Boolean:
+          BEGIN
+            IF NOT EVALUATE(Boolean, Value) AND NOT EVALUATE(Boolean, Value, XMLFormat) THEN
+              EXIT(STRSUBSTNO(Text013,Value));
+            FldRef.VALUE := Boolean;
+          END;
+        Field.Type::GUID:
+          BEGIN
+            IF NOT EVALUATE(Guid, Value) AND NOT EVALUATE(Guid, Value, XMLFormat) THEN
+              EXIT(STRSUBSTNO(Text011,Value));
+            FldRef.VALUE := Guid;
+          END
+      END;
+    END;
+
+    PROCEDURE IsNormalField@4(FldRef@1000 : FieldRef) : Boolean;
+    VAR
+      Field@1001 : Record 2000000041;
+    BEGIN
+      EVALUATE(Field.Type,FORMAT(FldRef.TYPE));
+
+      EXIT(UPPERCASE(FORMAT(FldRef.CLASS)) = 'NORMAL');
+    END;
+
+    PROCEDURE XMLFormat@6() : Integer;
+    BEGIN
+      EXIT(9);
+    END;
+
+    PROCEDURE RecordError@8(VAR MigrationRecord@1000 : Record 8614;ValidationFieldID@1003 : Integer;ErrorText@1001 : Text[250]);
+    VAR
+      MigrationError@1002 : Record 8617;
+    BEGIN
+      IF ErrorText = '' THEN
+        EXIT;
+      MigrationError.TableID := MigrationRecord.TableID;
+      MigrationError."RecordNo." := MigrationRecord."No.";
+      MigrationError.FieldID := ValidationFieldID;
+      MigrationError."Error Text" := ErrorText;
+      IF NOT MigrationError.INSERT THEN
+        MigrationError.MODIFY;
+      MigrationRecord.Invalid := TRUE;
+      MigrationRecord.MODIFY;
+    END;
+
+    PROCEDURE FieldError@9(VAR MigrationData@1000 : Record 8615;ErrorText@1001 : Text[250]);
+    VAR
+      MigrationRecord@1003 : Record 8614;
+      MigrationError@1002 : Record 8617;
+    BEGIN
+      IF ErrorText = '' THEN
+        EXIT;
+      MigrationError.TableID := MigrationData.TableID;
+      MigrationError."RecordNo." := MigrationData."No.";
+      MigrationError.FieldID := MigrationData.FieldID;
+      MigrationError."Error Text" := ErrorText;
+      IF NOT MigrationError.INSERT THEN
+        MigrationError.MODIFY;
+
+      MigrationData.Invalid := TRUE;
+      MigrationData.MODIFY;
+
+      MigrationRecord.GET(MigrationData.TableID,MigrationData."No.");
+      MigrationRecord.Invalid := TRUE;
+      MigrationRecord.MODIFY;
+    END;
+
+    PROCEDURE CleanRecordError@15(VAR MigrationRecord@1000 : Record 8614);
+    VAR
+      MigrationError@1001 : Record 8617;
+    BEGIN
+      MigrationError.SETRANGE(TableID,MigrationRecord.TableID);
+      MigrationError.SETRANGE("RecordNo.",MigrationRecord."No.");
+      MigrationError.DELETEALL;
+    END;
+
+    PROCEDURE CleanFieldError@18(VAR MigrationData@1000 : Record 8615);
+    VAR
+      MigrationError@1001 : Record 8617;
+      MigrationRecord@1002 : Record 8614;
+    BEGIN
+      MigrationError.SETRANGE(TableID,MigrationData.TableID);
+      MigrationError.SETRANGE("RecordNo.",MigrationData."No.");
+      MigrationError.SETRANGE(FieldID,MigrationData.FieldID);
+      MigrationError.DELETEALL;
+
+      MigrationData.Invalid := FALSE;
+      MigrationData.MODIFY;
+
+      MigrationRecord.GET(MigrationData.TableID,MigrationData."No.");
+
+      MigrationError.RESET;
+      MigrationError.SETRANGE(TableID,MigrationData.TableID);
+      MigrationError.SETRANGE("RecordNo.",MigrationData."No.");
+      IF MigrationError.FIND('-') THEN
+        MigrationRecord.Invalid := TRUE
+      ELSE
+        MigrationRecord.Invalid := FALSE;
+
+      MigrationRecord.MODIFY;
+    END;
+
+    PROCEDURE ExportSetupDataXML@10(XMLDataFile@1000 : Text[1024];VAR MigrationTable@1001 : Record 8613) : Boolean;
+    VAR
+      RBAutoMgt@1003 : Codeunit 419;
+      LocXML@1002 : Text[1024];
+      FileFilter@1004 : Text[1024];
+      ToFile@1005 : Text[1024];
+    BEGIN
+      IF ISCLEAR(SetupDataXML) THEN
+        CREATE(SetupDataXML);
+
+      IF Advanced THEN
+        LocXML := '<_locDefinition><_locDefault _loc="locNone"/></_locDefinition>';
+      SetupDataXML.loadXML(
+        '<?xml version="1.0" encoding="UTF-16" standalone="yes"?><DataList>' + LocXML + '</DataList>');
+
+      InitialiseProgressWindow(MigrationTable.COUNTAPPROX,Text014);
+
+      IF MigrationTable.FIND('-') THEN
+        REPEAT
+          MigrationTable.CALCFIELDS("Table Name","No. of Database Records","Fields Included");
+          UpdateProgressWindow(MigrationTable."Table Name");
+          IF MigrationTable."Fields Included" THEN  BEGIN
+            CreateRecordNodes(MigrationTable);
+            MigrationTable."Exported Date Time" := CREATEDATETIME(TODAY,TIME);
+            MigrationTable.MODIFY;
+          END;
+        UNTIL MigrationTable.NEXT = 0;
+
+      IF NOT ExportToExcel THEN BEGIN
+        IF ISSERVICETIER THEN BEGIN
+          XMLDataFile := RBAutoMgt.EnvironFileName('','');
+          FileFilter := Text029;
+          ToFile := Text026 + '.xml';
+          SetupDataXML.save(XMLDataFile);
+          DOWNLOAD(XMLDataFile,Text027,'',FileFilter,ToFile);
+        END ELSE BEGIN
+          XMLDataFile := XMLDataFile + '.xml';
+          SetupDataXML.save(XMLDataFile);
+        END
+      END ELSE
+        SetupDataXML.save(XMLDataFile);
+
+      Window.CLOSE;
+
+      EXIT(TRUE);
+    END;
+
+    PROCEDURE ImportSetupDataXML@12(XMLDataFile@1001 : Text[1024];CompanySetupImport@1018 : Boolean;CompanyType@1019 : Text[50]) : Boolean;
+    VAR
+      MigrationTable@1004 : Record 8613;
+      MigrationRecord@1005 : Record 8614;
+      MigrationRecord1@1014 : Record 8614;
+      MigrationData@1015 : Record 8615;
+      MigrationData1@1017 : Record 8615;
+      MigrationField@1016 : Record 8616;
+      Fields@1020 : Record 2000000041;
+      DocumentElement@1013 : Automation "{F5078F18-C551-11D3-89B9-0000F81FE221} 6.0:{2933BF86-7B36-11D2-B20E-00C04F983E60}:'Microsoft XML, v6.0'.IXMLDOMElement";
+      TableNodes@1012 : Automation "{F5078F18-C551-11D3-89B9-0000F81FE221} 6.0:{2933BF82-7B36-11D2-B20E-00C04F983E60}:'Microsoft XML, v6.0'.IXMLDOMNodeList";
+      RecordNodes@1011 : Automation "{F5078F18-C551-11D3-89B9-0000F81FE221} 6.0:{2933BF82-7B36-11D2-B20E-00C04F983E60}:'Microsoft XML, v6.0'.IXMLDOMNodeList";
+      TableNode@1010 : Automation "{F5078F18-C551-11D3-89B9-0000F81FE221} 6.0:{2933BF80-7B36-11D2-B20E-00C04F983E60}:'Microsoft XML, v6.0'.IXMLDOMNode";
+      RecordNode@1009 : Automation "{F5078F18-C551-11D3-89B9-0000F81FE221} 6.0:{2933BF80-7B36-11D2-B20E-00C04F983E60}:'Microsoft XML, v6.0'.IXMLDOMNode";
+      FieldNodes@1008 : Automation "{F5078F18-C551-11D3-89B9-0000F81FE221} 6.0:{2933BF82-7B36-11D2-B20E-00C04F983E60}:'Microsoft XML, v6.0'.IXMLDOMNodeList";
+      fieldNode@1000 : Automation "{F5078F18-C551-11D3-89B9-0000F81FE221} 6.0:{2933BF80-7B36-11D2-B20E-00C04F983E60}:'Microsoft XML, v6.0'.IXMLDOMNode";
+      FormIDNode@1023 : Automation "{F5078F18-C551-11D3-89B9-0000F81FE221} 6.0:{2933BF80-7B36-11D2-B20E-00C04F983E60}:'Microsoft XML, v6.0'.IXMLDOMNode";
+      NodeCount1@1007 : Integer;
+      NodeCount2@1006 : Integer;
+      TableID@1003 : Integer;
+      RecRef@1002 : RecordRef;
+      FieldRef@1021 : FieldRef;
+      FormID@1022 : Text[50];
+      ErrorText@1030 : Text[250];
+    BEGIN
+      IF ISCLEAR(SetupDataXML) THEN
+        CREATE(SetupDataXML,TRUE,TRUE);
+
+      IF NOT SetupDataXML.load(XMLDataFile) THEN
+        EXIT;
+
+      DocumentElement := SetupDataXML.documentElement;
+      TableNodes := DocumentElement.childNodes;
+
+      InitialiseProgressWindow(TableNodes.length,Text017);
+
+      FOR NodeCount1 := 0 TO (TableNodes.length - 1) DO BEGIN
+        TableNode := TableNodes.item(NodeCount1);
+
+        IF EVALUATE(TableID,FORMAT(TableNode.firstChild.text)) THEN;
+        IF (TableID <> 0) AND (NOT MigrationTable.GET(TableID)) THEN BEGIN
+          MigrationTable.TableID := TableID;
+          FormIDNode := TableNode.selectSingleNode(GetElementName(MigrationTable.FIELDNAME("Form ID")));
+          IF NOT ISCLEAR(FormIDNode) THEN
+            FormID := FormIDNode.text;
+          IF FormID <> '' THEN
+            EVALUATE(MigrationTable."Form ID",FormID);
+          MigrationTable."Imported Date Time" := CREATEDATETIME(TODAY,TIME);
+          MigrationTable.INSERT;
+          IF MigrationTable."Company Type" <> '' THEN BEGIN
+            IF STRPOS(MigrationTable."Company Type",CompanyType) = 0 THEN
+              MigrationTable."Company Type" := MigrationTable."Company Type" + ', ' + CompanyType
+          END ELSE
+            MigrationTable."Company Type" := CompanyType;
+          MigrationTable.MODIFY;
+
+          MigrationTable.CALCFIELDS("Table Name");
+          RecordNodes := TableNode.selectNodes(GetElementName(MigrationTable."Table Name"));
+          IF RecordNodes.length > 0 THEN BEGIN
+            RecordNode := RecordNodes.item(0);
+            IF RecordNode.hasChildNodes() THEN BEGIN
+              Fields.SETRANGE(Fields.TableNo,TableID);
+              IF Fields.FIND('-') THEN
+                REPEAT
+                  IF FieldNodeExists(RecordNode,GetElementName(Fields.FieldName)) THEN BEGIN
+                    MigrationField.TableID := TableID;
+                    MigrationField.FieldID := Fields."No.";
+                    MigrationField.Include := TRUE;
+                    MigrationField.Validate := NOT CompanySetupImport;
+                    MigrationField.Localize := LocalizeField(RecordNode,Fields.FieldName);
+                    IF NOT MigrationField.INSERT THEN
+                      MigrationField.MODIFY;
+                  END;
+                UNTIL Fields.NEXT = 0;
+            END;
+          END;
+        END;
+
+        IF MigrationTable.GET(TableID) THEN BEGIN
+          MigrationTable.CALCFIELDS("Table Name");
+          UpdateProgressWindow(MigrationTable."Table Name");
+          RecordNodes := TableNode.selectNodes(GetElementName(MigrationTable."Table Name"));
+
+          FOR NodeCount2 := 0 TO RecordNodes.length -1 DO BEGIN
+            RecordNode := RecordNodes.item(NodeCount2);
+            IF RecordNode.hasChildNodes() THEN BEGIN
+              MigrationRecord.TableID := MigrationTable.TableID;
+
+              MigrationRecord1.SETRANGE(TableID,MigrationTable.TableID);
+              IF MigrationRecord1.FIND('+') THEN
+                MigrationRecord."No." := MigrationRecord1."No." + 1
+              ELSE
+                MigrationRecord."No." := 1;
+
+              MigrationRecord.INSERT;
+              RecRef.CLOSE;
+              RecRef.OPEN(MigrationTable.TableID);
+              MigrationField.SETRANGE(TableID,MigrationTable.TableID);
+              IF MigrationField.FIND('-') THEN BEGIN
+                REPEAT
+                  CLEAR(MigrationData);
+                  MigrationData.TableID := MigrationField.TableID;
+                  MigrationData.FieldID := MigrationField.FieldID;
+                  MigrationData1.SETCURRENTKEY(TableID,FieldID);
+                  MigrationData1.SETRANGE(TableID,MigrationField.TableID);
+                  MigrationData1.SETRANGE(FieldID,MigrationField.FieldID);
+                  IF MigrationData1.FIND('+') THEN
+                    MigrationData."No." := MigrationData1."No." + 1
+                  ELSE
+                    MigrationData."No." := 1;
+
+                  MigrationField.CALCFIELDS("Field Name");
+                  IF MigrationField.Include AND FieldNodeExists(RecordNode,GetElementName(MigrationField."Field Name")) THEN
+                    MigrationData.Value := GetNodeValue(RecordNode,GetElementName(MigrationField."Field Name"));
+                  MigrationData.INSERT;
+
+                  FieldRef := RecRef.FIELD(MigrationData.FieldID);
+
+                  IF MigrationData.Value <> '' THEN BEGIN
+                    ErrorText := EvaluateValue(FieldRef,MigrationData.Value);
+                    IF ErrorText <> '' THEN BEGIN
+                      FieldError(MigrationData,ErrorText);
+                    END ELSE BEGIN
+                      IF FORMAT(FieldRef.TYPE) = 'Option' THEN
+                         MigrationData.Value := GetOptionString(FieldRef,FORMAT(FieldRef.VALUE))
+                      ELSE
+                         MigrationData.Value := FORMAT(FieldRef.VALUE);
+                    END;
+                    MigrationData.MODIFY;
+                    IF MigrationField.Validate AND NOT ValidateTableRelation(FieldRef) THEN
+                      FieldError(MigrationData,STRSUBSTNO(Text022,FieldRef.CAPTION,MigrationData.Value));
+                  END;
+                UNTIL MigrationField.NEXT = 0;
+              END;
+              MigrationTable."Imported Date Time" := CURRENTDATETIME;
+              MigrationTable.MODIFY;
+            END;
+          END;
+        END;
+      END;
+
+      Window.CLOSE;
+
+      EXIT(TRUE);
+    END;
+
+    PROCEDURE ExportSetupDataToExcel@13(ExcelFile@1000 : Text[1024];VAR MigrationTable@1001 : Record 8613) : Boolean;
+    VAR
+      MigrationTable1@1010 : Record 8613;
+      MigrationTableField@1011 : Record 8616;
+      Field@1022 : Record 2000000041;
+      SetupDataSchema@1006 : XMLport 8610;
+      OStream@1007 : OutStream;
+      TempSchemaFile@1002 : File;
+      TempSetupDataFile@1003 : File;
+      TempFile@1023 : File;
+      TempFileName@1024 : Text[1024];
+      TempSetupDataFileName@1004 : Text[1024];
+      TempSetupDataFileNameCL@1030 : Text[1024];
+      TempSchemaFileName@1031 : Text[1024];
+      TempSchemaFileNameCL@1005 : Text[1024];
+      ToFile@1025 : Text[1024];
+      XMLMap@1009 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{0002447B-0000-0000-C000-000000000046}:Unknown Automation Server.XmlMap";
+      XMLMaps@1008 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{0002447C-0000-0000-C000-000000000046}:Unknown Automation Server.XmlMaps";
+      ListObjects@1018 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00024470-0000-0000-C000-000000000046}:Unknown Automation Server.ListObjects";
+      ListObject@1017 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00024471-0000-0000-C000-000000000046}:Unknown Automation Server.ListObject";
+      ListColumns@1016 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00024472-0000-0000-C000-000000000046}:Unknown Automation Server.ListColumns";
+      ListColumn@1015 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00024473-0000-0000-C000-000000000046}:Unknown Automation Server.ListColumn";
+      Range@1014 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020846-0000-0000-C000-000000000046}:Unknown Automation Server.Range";
+      XPath@1013 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{0002447E-0000-0000-C000-000000000046}:Unknown Automation Server.XPath";
+      i@1012 : Integer;
+      RecRef@1019 : RecordRef;
+      RecRef1@1021 : RecordRef;
+      FldRef@1020 : FieldRef;
+    BEGIN
+      MigrationTable1.COPY(MigrationTable);
+
+      TempSchemaFile.CREATETEMPFILE;
+      TempSchemaFileName := TempSchemaFile.NAME + '.xsd';
+      TempSchemaFile.CLOSE;
+
+      TempSchemaFile.CREATE(TempSchemaFileName);
+      TempSchemaFile.CREATEOUTSTREAM(OStream);
+      SetupDataSchema.SETDESTINATION(OStream);
+      SetupDataSchema.SETTABLEVIEW(MigrationTable);
+      IF NOT SetupDataSchema.EXPORT THEN
+        ERROR(Text018);
+      TempSchemaFile.CLOSE;
+
+      TempSetupDataFile.CREATETEMPFILE;
+      TempSetupDataFileName := TempSetupDataFile.NAME + '.xml';
+      TempSetupDataFile.CLOSE;
+
+      ExportToExcel := TRUE;
+      ExportSetupDataXML(TempSetupDataFileName,MigrationTable);
+      ExportToExcel := FALSE;
+
+      IF ISSERVICETIER THEN BEGIN
+        TempSetupDataFileNameCL := "3TierMngt".DownloadTempFile(TempSetupDataFileName);
+        TempSchemaFileNameCL := "3TierMngt".DownloadTempFile(TempSchemaFileName);
+      END ELSE BEGIN
+        TempSetupDataFileNameCL := TempSetupDataFileName;
+        TempSchemaFileNameCL := TempSchemaFileName;
+      END;
+
+      CreateBook;
+      XlApp.DisplayAlerts(FALSE);
+      XlBook.XmlMaps.Add(TempSchemaFileNameCL);
+      XMLMap := XlBook.XmlMaps.Item(1);
+
+      InitialiseProgressWindow(MigrationTable1.COUNT,Text024);
+      IF MigrationTable1.FIND('-') THEN
+        REPEAT
+          MigrationTable1.CALCFIELDS("Table Name");
+          UpdateProgressWindow(MigrationTable1."Table Name");
+          XlSheet := XlBook.Worksheets.Add;
+          XlSheet.Name := GetElementName(MigrationTable1."Table Name");
+
+          Range := XlSheet.Range('A1');
+          RecRef1.OPEN(MigrationTable1.TableID);
+          Range.Value := RecRef1.CAPTION;
+          RecRef1.CLOSE;
+
+          Range := XlSheet.Range('B1');
+          Range.Value := MigrationTable1.TableID;
+          Range.XPath.SetValue(XMLMap,'/DataList/' + (GetElementName(MigrationTable1."Table Name") + 'List') + '/' + 'TableID');
+
+          MigrationTableField.SETRANGE(TableID,MigrationTable1.TableID);
+          MigrationTableField.SETRANGE(Include,TRUE);
+          Range := XlSheet.Range('A3',FORMAT(GetXLColumnID(MigrationTableField.COUNT)) + '3');
+          Range.Select;
+          ListObject := XlSheet.ListObjects.Add;
+          ListColumns := ListObject.ListColumns;
+
+          i := 1;
+          RecRef.OPEN(MigrationTable1.TableID);
+          IF MigrationTableField.FIND('-') THEN
+            REPEAT
+              MigrationTableField.CALCFIELDS("Field Name");
+              ListColumn := ListColumns.Item(i);
+
+              Field.SETRANGE(TableNo,MigrationTableField.TableID);
+              Field.SETRANGE("No.",MigrationTableField.FieldID);
+              IF NOT Field.FIND('-') THEN
+                EXIT;
+              ListColumn.Name := Field."Field Caption";
+              ListColumn.XPath.SetValue(
+                XMLMap,'/DataList/' + (GetElementName(MigrationTable1."Table Name") + 'List') + '/' +
+                GetElementName(MigrationTable1."Table Name") + '/' + GetElementName(MigrationTableField."Field Name"));
+
+              FldRef := RecRef.FIELD(MigrationTableField.FieldID);
+              XlSheet.Range(FORMAT(GetXLColumnID(i)) + '3').AddComment.Text := AddComment(FldRef);
+
+              i := i + 1;
+            UNTIL MigrationTableField.NEXT = 0;
+          RecRef.CLOSE;
+          Range := XlSheet.Range('A1',FORMAT(GetXLColumnID(MigrationTableField.COUNT)) + '3');
+          Range.Columns.AutoFit;
+        UNTIL MigrationTable1.NEXT = 0;
+
+      XMLMap.Import(TempSetupDataFileNameCL,TRUE);
+
+      XlBook._SaveAs(ExcelFile);
+
+      CLEAR(XlSheet);
+      XlBook.Close(FALSE);
+      CLEAR(XlBook);
+      XlApp.Quit();
+      CLEAR(XlApp);
+
+      FILE.ERASE(TempSchemaFileName);
+      FILE.ERASE(TempSetupDataFileName);
+
+      Window.CLOSE;
+
+      EXIT(TRUE);
+    END;
+
+    PROCEDURE ImportFromExcel@24(XLSDataFile@1000 : Text[1024]);
+    VAR
+      TmpXmlFile@1004 : File;
+      XmlMaps@1002 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{0002447C-0000-0000-C000-000000000046}:Unknown Automation Server.XmlMaps";
+      XmlMap@1003 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{0002447B-0000-0000-C000-000000000046}:Unknown Automation Server.XmlMap";
+      XMLDataFile@1001 : Text[1024];
+      XMLDataFileClient@1005 : Text[1024];
+    BEGIN
+      IF ISCLEAR(XlApp) THEN
+        IF NOT CREATE(XlApp,TRUE,TRUE) THEN
+          ERROR(Text019);
+
+      XlApp.Workbooks._Open(XLSDataFile);
+      XlBook := XlApp.ActiveWorkbook;
+
+      TmpXmlFile.CREATETEMPFILE;
+      XMLDataFile := TmpXmlFile.NAME + '.xml';
+      TmpXmlFile.CLOSE;
+      TmpXmlFile.CREATE(XMLDataFile);
+      TmpXmlFile.CLOSE;
+      XMLDataFileClient := "3TierMngt".DownloadTempFile(XMLDataFile);
+      ERASE(XMLDataFile);
+
+      XmlMaps := XlBook.XmlMaps;
+      IF XmlMaps.Count <> 0 THEN BEGIN
+        XmlMap := XmlMaps.Item(1);
+        XmlMap.Export(XMLDataFileClient,TRUE);
+          IF ImportSetupDataXML(XMLDataFileClient,FALSE,'') THEN
+            IF SuppressMessage <> TRUE THEN
+              MESSAGE(Text021);
+      END ELSE
+        ERROR(Text020);
+
+      XlBook.Close(FALSE);
+      CLEAR(XlBook);
+      XlApp.Quit();
+      CLEAR(XlApp);
+    END;
+
+    PROCEDURE CreateRecordNodes@11(MigrationTable@1000 : Record 8613);
+    VAR
+      Field@1005 : Record 2000000041;
+      MigrationTableField@1007 : Record 8616;
+      DocumentElement@1010 : Automation "{F5078F18-C551-11D3-89B9-0000F81FE221} 6.0:{2933BF80-7B36-11D2-B20E-00C04F983E60}:'Microsoft XML, v6.0'.IXMLDOMNode";
+      FieldNode@1006 : Automation "{F5078F18-C551-11D3-89B9-0000F81FE221} 6.0:{2933BF80-7B36-11D2-B20E-00C04F983E60}:'Microsoft XML, v6.0'.IXMLDOMNode";
+      RecordNode@1004 : Automation "{F5078F18-C551-11D3-89B9-0000F81FE221} 6.0:{2933BF80-7B36-11D2-B20E-00C04F983E60}:'Microsoft XML, v6.0'.IXMLDOMNode";
+      TableNode@1009 : Automation "{F5078F18-C551-11D3-89B9-0000F81FE221} 6.0:{2933BF80-7B36-11D2-B20E-00C04F983E60}:'Microsoft XML, v6.0'.IXMLDOMNode";
+      TableIDNode@1008 : Automation "{F5078F18-C551-11D3-89B9-0000F81FE221} 6.0:{2933BF80-7B36-11D2-B20E-00C04F983E60}:'Microsoft XML, v6.0'.IXMLDOMNode";
+      FormIDNode@1013 : Automation "{F5078F18-C551-11D3-89B9-0000F81FE221} 6.0:{2933BF80-7B36-11D2-B20E-00C04F983E60}:'Microsoft XML, v6.0'.IXMLDOMNode";
+      Node@1011 : Automation "{F5078F18-C551-11D3-89B9-0000F81FE221} 6.0:{2933BF80-7B36-11D2-B20E-00C04F983E60}:'Microsoft XML, v6.0'.IXMLDOMNode";
+      RecRef@1003 : RecordRef;
+      FieldRef@1002 : FieldRef;
+      BooleanInt@1001 : Integer;
+      OptionInt@1012 : Integer;
+      loc@1014 : Text[30];
+    BEGIN
+      DocumentElement := SetupDataXML.documentElement;
+      TableNode := SetupDataXML.createElement(GetElementName(MigrationTable."Table Name" + 'List'));
+      DocumentElement.appendChild(TableNode);
+
+      TableIDNode := SetupDataXML.createElement('TableID');
+      TableIDNode.text := FORMAT(MigrationTable.TableID);
+      TableNode.appendChild(TableIDNode);
+
+      FormIDNode := SetupDataXML.createElement('FormID');
+      FormIDNode.text := FORMAT(MigrationTable."Form ID");
+      TableNode.appendChild(FormIDNode);
+
+      RecRef.OPEN(MigrationTable.TableID);
+      IF RecRef.FIND('-') THEN
+        REPEAT
+          RecordNode := SetupDataXML.createElement(GetElementName(MigrationTable."Table Name"));
+          TableNode.appendChild(RecordNode);
+
+          MigrationTableField.SETRANGE(TableID, MigrationTable.TableID);
+          MigrationTableField.SETRANGE(Include,TRUE);
+          IF MigrationTableField.FIND('-') THEN
+            REPEAT
+              FieldRef := RecRef.FIELD(MigrationTableField.FieldID);
+              IF Field.GET(RecRef.NUMBER,FieldRef.NUMBER) THEN BEGIN
+                FieldNode := SetupDataXML.createElement(GetElementName(FieldRef.NAME));
+                FieldNode.text := FORMAT(FieldRef.VALUE);
+                IF (NOT ExportToExcel) AND (GLOBALLANGUAGE = 1033) THEN BEGIN
+                  IF (Field.Type = Field.Type::Boolean)  OR (Field.Type = Field.Type::Option) THEN
+                    FieldNode.text := FORMAT(FieldRef.VALUE,0,2);
+                  IF (Field.Type = Field.Type::DateFormula) AND (FORMAT(FieldRef.VALUE) <> '') THEN
+                    FieldNode.text := '<' + FORMAT(FieldRef.VALUE) + '>';
+                END ELSE
+                  IF Field.Type = Field.Type::Option THEN BEGIN
+                    OptionInt := FieldRef.VALUE;
+                    FieldNode.text := GetOptionValue(OptionInt+1,FieldRef.OPTIONCAPTION);
+                  END;
+                IF Advanced AND MigrationTableField.Localize THEN
+                  AddXMLComment(FieldNode,'_locComment_text="{MaxLength=' + FORMAT(Field.Len) + '}"');
+                RecordNode.appendChild(FieldNode); // must be after AddXMLComment and before AddAttribute.
+                IF Advanced THEN
+                  IF MigrationTableField.Localize THEN
+                    AddAttribute(FieldNode,'_loc','locData')
+                  ELSE
+                    AddAttribute(FieldNode,'_loc','locNone');
+              END;
+            UNTIL MigrationTableField.NEXT = 0;
+        UNTIL RecRef.NEXT = 0
+      ELSE BEGIN
+        RecordNode := SetupDataXML.createElement(GetElementName(MigrationTable."Table Name"));
+        TableNode.appendChild(RecordNode);
+
+        MigrationTableField.SETRANGE(TableID, MigrationTable.TableID);
+        MigrationTableField.SETRANGE(Include,TRUE);
+        IF MigrationTableField.FIND('-') THEN
+          REPEAT
+            FieldRef := RecRef.FIELD(MigrationTableField.FieldID);
+            FieldNode := SetupDataXML.createElement(GetElementName(FieldRef.NAME));
+            FieldNode.text := '';
+            RecordNode.appendChild(FieldNode);
+          UNTIL MigrationTableField.NEXT = 0;
+      END;
+    END;
+
+    LOCAL PROCEDURE InitialiseProgressWindow@21(Count@1000 : Integer;MigrationText@1001 : Text[1024]);
+    BEGIN
+      MigratedTables := 0;
+      TotalNoOfTables := Count;
+
+      Window.OPEN(MigrationText + Text015 + Text016);
+    END;
+
+    LOCAL PROCEDURE UpdateProgressWindow@19(TableCaption@1000 : Text[250]);
+    BEGIN
+      MigratedTables := MigratedTables + 1;
+
+      Window.UPDATE(1,TableCaption);
+      Window.UPDATE(3,ROUND(MigratedTables / TotalNoOfTables * 10000,1));
+    END;
+
+    PROCEDURE AddAttribute@23(VAR DOMNode@1020001 : Automation "{F5078F18-C551-11D3-89B9-0000F81FE221} 6.0:{2933BF80-7B36-11D2-B20E-00C04F983E60}:'Microsoft XML, v6.0'.IXMLDOMNode";Name@1020002 : Text[250];Value@1020003 : Text[250]);
+    VAR
+      TempAttribute@1020004 : Automation "{F5078F18-C551-11D3-89B9-0000F81FE221} 6.0:{2933BF80-7B36-11D2-B20E-00C04F983E60}:'Microsoft XML, v6.0'.IXMLDOMNode";
+    BEGIN
+      TempAttribute := DOMNode.ownerDocument.createAttribute(Name);
+      IF Value <> '' THEN
+        TempAttribute.nodeValue := Value;
+      DOMNode.attributes.setNamedItem(TempAttribute);
+      CLEAR(TempAttribute);
+    END;
+
+    LOCAL PROCEDURE AddXMLComment@35(VAR Node@1000 : Automation "{F5078F18-C551-11D3-89B9-0000F81FE221} 6.0:{2933BF80-7B36-11D2-B20E-00C04F983E60}:'Microsoft XML, v6.0'.IXMLDOMNode";Comment@1001 : Text[250]);
+    VAR
+      TempAttachment@1002 : TEMPORARY Record 5062;
+      InStr@1003 : InStream;
+      OutStr@1008 : OutStream;
+      XMLDoc2@1005 : Automation "{F5078F18-C551-11D3-89B9-0000F81FE221} 6.0:{88D96A05-F192-11D4-A65F-0040963251E5}:'Microsoft XML, v6.0'.DOMDocument60";
+      CommentNode@1006 : Automation "{F5078F18-C551-11D3-89B9-0000F81FE221} 6.0:{2933BF80-7B36-11D2-B20E-00C04F983E60}:'Microsoft XML, v6.0'.IXMLDOMNode";
+      XMLDocText@1007 : Text[1024];
+      i@1004 : Integer;
+    BEGIN
+      // The following is a workaround for C/SIDES 250 char string limitation when working with automations.
+      TempAttachment.INIT;
+      TempAttachment.Attachment.CREATEINSTREAM(InStr);
+      TempAttachment.Attachment.CREATEOUTSTREAM(OutStr);
+      CommentNode := SetupDataXML.createComment(Comment);
+      IF ISCLEAR(XMLDoc2) THEN
+        CREATE(XMLDoc2);
+      XMLDoc2.async := FALSE;
+      XMLDoc2.appendChild(Node);
+      XMLDoc2.save(OutStr);
+      IF InStr.READ(XMLDocText) = 0 THEN;
+      CLEAR(TempAttachment);
+      CLEAR(InStr);
+      CLEAR(OutStr);
+      TempAttachment.Attachment.CREATEINSTREAM(InStr);
+      TempAttachment.Attachment.CREATEOUTSTREAM(OutStr);
+
+      i := STRPOS(XMLDocText,'>');
+      IF (i > 1) AND (i < STRLEN(XMLDocText) - 1) THEN BEGIN
+        XMLDocText := COPYSTR(XMLDocText,1,i) + CommentNode.xml + COPYSTR(XMLDocText,i + 1);
+        OutStr.WRITETEXT(XMLDocText);
+        IF ISCLEAR(XMLDoc2) THEN
+          CREATE(XMLDoc2);
+        XMLDoc2.async := FALSE;
+        XMLDoc2.load(InStr);
+        Node := XMLDoc2.firstChild;
+      END;
+    END;
+
+    PROCEDURE GetElementName@22(NameIn@1000 : Text[250]) : Text[250];
+    BEGIN
+      NameIn := DELCHR(NameIn,'=','ï''`');
+      // BRK0001 >>
+      NameIn := DELCHR(CONVERTSTR(NameIn,'<>,./\+-&()%$','             '),'=',' ');
+      NameIn := DELCHR(NameIn,'=',' ');
+      IF (NameIn[1] >= '0') AND (NameIn[1] <= '9') THEN
+        NameIn := '_' + NameIn;
+      // BRK0001 <<
+      EXIT(NameIn);
+    END;
+
+    PROCEDURE GetOptionValue@17(Position@1000 : Integer;OptionString@1001 : Text[1024]) : Text[1024];
+    VAR
+      Option@1002 : Text[1024];
+      CommaPos@1003 : Integer;
+    BEGIN
+      IF Position <= 0 THEN
+        EXIT(Option);
+
+      WHILE (Position >= 1) DO BEGIN
+        CommaPos := STRPOS(OptionString,',');
+        IF (CommaPos - 1 > 0) THEN BEGIN
+          Option := COPYSTR(OptionString,1,CommaPos - 1);
+          OptionString := DELSTR(OptionString,1,CommaPos);
+        END ELSE BEGIN
+          IF (CommaPos = 1) AND (Position = 1) THEN
+            EXIT('');
+          IF (CommaPos = 1) THEN
+            OptionString := DELSTR(OptionString,1,CommaPos);
+          Option := OptionString;
+        END;
+        Position := Position - 1;
+      END;
+
+      EXIT(Option);
+    END;
+
+    PROCEDURE FieldNodeExists@36(VAR RecordNode@1000 : Automation "{F5078F18-C551-11D3-89B9-0000F81FE221} 6.0:{2933BF80-7B36-11D2-B20E-00C04F983E60}:'Microsoft XML, v6.0'.IXMLDOMNode";FieldNodeName@1001 : Text[250]) : Boolean;
+    VAR
+      FieldNode@1002 : Automation "{F5078F18-C551-11D3-89B9-0000F81FE221} 6.0:{2933BF80-7B36-11D2-B20E-00C04F983E60}:'Microsoft XML, v6.0'.IXMLDOMNode";
+    BEGIN
+      // BRK0001 >>
+      IF (FieldNodeName[1] >= '0') AND (FieldNodeName[1] <= '9') THEN
+        FieldNodeName := '_' + FieldNodeName;
+      // BRK0001 <<
+      FieldNode := RecordNode.selectSingleNode(FieldNodeName);
+
+      IF NOT ISCLEAR(FieldNode) THEN
+        EXIT(TRUE);
+    END;
+
+    PROCEDURE GetNodeValue@26(VAR RecordNode@1000 : Automation "{F5078F18-C551-11D3-89B9-0000F81FE221} 6.0:{2933BF80-7B36-11D2-B20E-00C04F983E60}:'Microsoft XML, v6.0'.IXMLDOMNode";FieldNodeName@1001 : Text[250]) : Text[1024];
+    VAR
+      FieldNode@1002 : Automation "{F5078F18-C551-11D3-89B9-0000F81FE221} 6.0:{2933BF80-7B36-11D2-B20E-00C04F983E60}:'Microsoft XML, v6.0'.IXMLDOMNode";
+    BEGIN
+      FieldNode := RecordNode.selectSingleNode(FieldNodeName);
+      EXIT(FieldNode.text);
+    END;
+
+    LOCAL PROCEDURE CreateBook@1000000003();
+    BEGIN
+      IF ISCLEAR(XlApp) THEN
+        IF NOT CREATE(XlApp,TRUE,TRUE) THEN
+          ERROR(Text019);
+      XlApp.Visible(FALSE);
+      XlBook := XlApp.Workbooks.Add(-4167);
+    END;
+
+    PROCEDURE GetXLColumnID@14(ColumnNo@1003 : Integer) : Text[10];
+    VAR
+      ExcelBuf@1102601000 : Record 370;
+    BEGIN
+      ExcelBuf.VALIDATE("Column No.",ColumnNo);
+      EXIT(ExcelBuf.xlColID);
+    END;
+
+    PROCEDURE AddComment@1000000009(VAR FieldRef@1000000000 : FieldRef) RowComment : Text[1024];
+    VAR
+      Char10@1000000006 : Char;
+      T10@1000000005 : Text[1];
+      StartPos@1000000002 : Integer;
+      FieldNo@1000000003 : Integer;
+      i@1000000007 : Integer;
+      FieldBuffer@1000000008 : ARRAY [250] OF Text[250];
+    BEGIN
+      StartPos := 1;
+      FieldNo := 1;
+      Char10 := 10;
+      T10 := FORMAT(Char10);
+
+      RowComment := FORMAT(FieldRef.TYPE) ;
+      CASE FORMAT(FieldRef.TYPE) OF
+        'Text','Code' : RowComment := RowComment + FORMAT(FieldRef.LENGTH);
+      END;
+
+      IF FORMAT(FieldRef.TYPE) <> 'Option' THEN
+        EXIT(RowComment);
+
+      CLEAR(FieldBuffer);
+
+      WHILE NOT (StartPos = STRLEN(FieldRef.OPTIONCAPTION) + 1) DO BEGIN
+        IF COPYSTR(FieldRef.OPTIONCAPTION,StartPos,1) <> ',' THEN
+          FieldBuffer[FieldNo] := FieldBuffer[FieldNo] + COPYSTR(FieldRef.OPTIONCAPTION,StartPos,1)
+        ELSE
+          FieldNo := FieldNo + 1;
+        StartPos := StartPos + 1;
+      END;
+
+      FOR i := 1 TO FieldNo DO
+        RowComment := RowComment + T10 + FORMAT(i - 1) + ': ' + FieldBuffer[i];
+    END;
+
+    PROCEDURE IsKeyField@30(TableID@1005 : Integer;FieldID@1006 : Integer) : Boolean;
+    VAR
+      FieldSelection@1004 : Record 8616;
+      RecRef@1003 : RecordRef;
+      KeyRef@1002 : KeyRef;
+      FieldRef@1001 : FieldRef;
+      KeyFieldCount@1000 : Integer;
+    BEGIN
+      RecRef.OPEN(TableID);
+      KeyRef := RecRef.KEYINDEX(1);
+      FOR KeyFieldCount := 1 TO KeyRef.FIELDCOUNT DO BEGIN
+        FieldRef := KeyRef.FIELDINDEX(KeyFieldCount);
+        IF FieldRef.NUMBER = FieldID THEN
+          EXIT(TRUE);
+      END;
+
+      EXIT(FALSE);
+    END;
+
+    PROCEDURE GetValidationFieldID@33() : Integer;
+    BEGIN
+      EXIT(ValidationFieldID);
+    END;
+
+    LOCAL PROCEDURE LocalizeField@31(RecordNode@1000 : Automation "{F5078F18-C551-11D3-89B9-0000F81FE221} 6.0:{2933BF80-7B36-11D2-B20E-00C04F983E60}:'Microsoft XML, v6.0'.IXMLDOMNode";FieldName@1001 : Text[1024]) : Boolean;
+    VAR
+      FieldNode@1002 : Automation "{F5078F18-C551-11D3-89B9-0000F81FE221} 6.0:{2933BF80-7B36-11D2-B20E-00C04F983E60}:'Microsoft XML, v6.0'.IXMLDOMNode";
+      AttributeNode@1004 : Automation "{F5078F18-C551-11D3-89B9-0000F81FE221} 6.0:{2933BF80-7B36-11D2-B20E-00C04F983E60}:'Microsoft XML, v6.0'.IXMLDOMNode";
+      FieldAttributes@1003 : Automation "{F5078F18-C551-11D3-89B9-0000F81FE221} 6.0:{2933BF83-7B36-11D2-B20E-00C04F983E60}:'Microsoft XML, v6.0'.IXMLDOMNamedNodeMap";
+    BEGIN
+      IF FieldNodeExists(RecordNode,GetElementName(FieldName)) THEN BEGIN
+        FieldNode := RecordNode.selectSingleNode(GetElementName(FieldName));
+        FieldAttributes := FieldNode.attributes;
+        AttributeNode := FieldAttributes.getNamedItem('_loc');
+        IF ISCLEAR(AttributeNode) THEN
+          EXIT(FALSE)
+        ELSE
+          EXIT(AttributeNode.text = 'locData');
+      END
+    END;
+
+    PROCEDURE EvaluateTextToFieldRef@28(InputText@1001 : Text[1024];VAR FieldRef@1000 : FieldRef;ToValidate@1002 : Boolean) : Boolean;
+    VAR
+      GUIDVar@1006 : GUID;
+      GUIDVar1@1022 : GUID;
+      BigIntVar@1005 : BigInteger;
+      BigIntVar1@1021 : BigInteger;
+      IntVar@1003 : Integer;
+      IntVar1@1013 : Integer;
+      DecimalVar@1007 : Decimal;
+      DecimalVar1@1014 : Decimal;
+      BoolVar@1004 : Boolean;
+      BoolVar1@1015 : Boolean;
+      DateVar@1008 : Date;
+      DateVar1@1016 : Date;
+      TimeVar@1009 : Time;
+      TimeVar1@1017 : Time;
+      DateTimeVar@1010 : DateTime;
+      DateTimeVar1@1018 : DateTime;
+      DurationVar@1011 : Duration;
+      DurationVar1@1019 : Duration;
+      DateFormulaVar@1012 : DateFormula;
+      DateFormulaVar1@1020 : DateFormula;
+      TextVar@1023 : Text[1024];
+      TextVar1@1024 : Text[1024];
+    BEGIN
+      IF (FORMAT(FieldRef.CLASS) = 'FlowField') OR (FORMAT(FieldRef.CLASS) = 'FlowFilter') THEN
+        EXIT(TRUE);
+
+      CASE FORMAT(FieldRef.TYPE) OF
+
+        'Option':
+          BEGIN
+            GetOption(InputText,FieldRef.OPTIONCAPTION,IntVar);
+            IF IntVar = -1 THEN
+              EXIT(FALSE);
+
+            IF ToValidate THEN BEGIN
+              IntVar1 := FieldRef.VALUE;
+              IF IntVar1 <> IntVar THEN
+                FieldRef.VALIDATE(IntVar);
+            END ELSE
+              FieldRef.VALUE := IntVar;
+          END;
+
+        'Integer':
+          IF EVALUATE(IntVar,InputText) THEN BEGIN
+            IF ToValidate THEN BEGIN
+              IntVar1 := FieldRef.VALUE;
+              IF IntVar1 <> IntVar THEN
+                FieldRef.VALIDATE(IntVar);
+            END ELSE
+              FieldRef.VALUE := IntVar;
+          END ELSE
+            EXIT(FALSE);
+
+        'Decimal':
+          IF EVALUATE(DecimalVar,InputText) THEN BEGIN
+            IF ToValidate THEN BEGIN
+              DecimalVar1 := FieldRef.VALUE;
+              IF DecimalVar1 <> DecimalVar THEN
+                FieldRef.VALIDATE(DecimalVar);
+            END ELSE
+              FieldRef.VALUE := DecimalVar;
+          END ELSE
+            EXIT(FALSE);
+
+        'Date':
+          IF EVALUATE(DateVar,InputText) THEN BEGIN
+            IF ToValidate THEN BEGIN
+              DateVar1 := FieldRef.VALUE;
+              IF DateVar1 <> DateVar THEN
+                FieldRef.VALIDATE(DateVar);
+            END ELSE
+              FieldRef.VALUE := DateVar;
+          END ELSE
+            EXIT(FALSE);
+
+        'Time':
+          IF EVALUATE(TimeVar,InputText) THEN BEGIN
+            IF ToValidate THEN BEGIN
+              TimeVar1 := FieldRef.VALUE;
+              IF TimeVar1 <> TimeVar THEN
+                FieldRef.VALIDATE(TimeVar);
+            END ELSE
+              FieldRef.VALUE := TimeVar;
+          END ELSE
+            EXIT(FALSE);
+
+        'DateTime':
+          IF EVALUATE(DateTimeVar,InputText) THEN BEGIN
+            IF ToValidate THEN BEGIN
+              DateTimeVar1 := FieldRef.VALUE;
+              IF DateTimeVar1 <> DateTimeVar THEN
+                FieldRef.VALIDATE(DateTimeVar);
+            END ELSE
+              FieldRef.VALUE := DateTimeVar;
+          END ELSE
+            EXIT(FALSE);
+
+        'Boolean':
+          IF EVALUATE(BoolVar,InputText) THEN BEGIN
+            IF ToValidate THEN BEGIN
+              BoolVar1 := FieldRef.VALUE;
+              IF BoolVar1 <> BoolVar THEN
+                FieldRef.VALIDATE(BoolVar);
+            END ELSE
+              FieldRef.VALUE := BoolVar;
+          END ELSE
+            EXIT(FALSE);
+
+        'Duration':
+          IF EVALUATE(DurationVar,InputText) THEN BEGIN
+            IF ToValidate THEN BEGIN
+              DurationVar1 := FieldRef.VALUE;
+              IF DurationVar1 <> DurationVar THEN
+                FieldRef.VALIDATE(DurationVar);
+            END ELSE
+              FieldRef.VALUE := DurationVar;
+          END ELSE
+            EXIT(FALSE);
+
+        'BigInteger':
+          IF EVALUATE(BigIntVar,InputText) THEN BEGIN
+            IF ToValidate THEN BEGIN
+              BigIntVar1 := FieldRef.VALUE;
+              IF BigIntVar1 <> BigIntVar THEN
+                FieldRef.VALIDATE(BigIntVar);
+            END ELSE
+              FieldRef.VALUE := BigIntVar;
+          END ELSE
+            EXIT(FALSE);
+
+        'GUID':
+          IF EVALUATE(GUIDVar,InputText) THEN BEGIN
+            IF ToValidate THEN BEGIN
+              GUIDVar1 := FieldRef.VALUE;
+              IF GUIDVar1 <> GUIDVar THEN
+                FieldRef.VALIDATE(GUIDVar);
+            END ELSE
+              FieldRef.VALUE := GUIDVar;
+          END ELSE
+            EXIT(FALSE);
+
+        'Code','Text':
+          BEGIN
+            IF STRLEN(InputText) > FieldRef.LENGTH THEN BEGIN
+              IF ToValidate THEN BEGIN
+                TextVar := FieldRef.VALUE;
+                TextVar1 := PADSTR(InputText,FieldRef.LENGTH);
+                IF TextVar <> TextVar1 THEN
+                  FieldRef.VALIDATE(TextVar1);
+              END ELSE
+                FieldRef.VALUE := PADSTR(InputText,FieldRef.LENGTH);
+            END ELSE BEGIN
+              IF ToValidate THEN BEGIN
+                TextVar := FieldRef.VALUE;
+                IF TextVar <> InputText THEN
+                  FieldRef.VALIDATE(InputText);
+              END ELSE
+                FieldRef.VALUE := InputText;
+            END;
+          END;
+
+        'DateFormula':
+          BEGIN
+            IF EVALUATE(DateFormulaVar,InputText) THEN BEGIN
+              IF ToValidate THEN BEGIN
+                DateFormulaVar1 := FieldRef.VALUE;
+                IF DateFormulaVar1 <> DateFormulaVar THEN
+                  FieldRef.VALIDATE(DateFormulaVar);
+              END ELSE
+                FieldRef.VALUE := DateFormulaVar;
+            END ELSE
+              EXIT(FALSE);
+          END;
+
+        ELSE
+          EXIT(FALSE);
+      END;
+
+      EXIT(TRUE);
+    END;
+
+    PROCEDURE SetAdvanced@34(Advanced1@1000 : Boolean);
+    BEGIN
+      Advanced := Advanced1;
+    END;
+
+    PROCEDURE SuppressMessages@1102601000(Suppress@1102601000 : Boolean);
+    BEGIN
+      SuppressMessage := Suppress;
+    END;
+
+    EVENT SetupDataXML@1013::ondataavailable@198();
+    BEGIN
+    END;
+
+    EVENT SetupDataXML@1013::onreadystatechange@-609();
+    BEGIN
+    END;
+
+    EVENT SchemaXML@1026::ondataavailable@198();
+    BEGIN
+    END;
+
+    EVENT SchemaXML@1026::onreadystatechange@-609();
+    BEGIN
+    END;
+
+    EVENT XlSheet@1022::SelectionChange@1543(Target@1000 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020846-0000-0000-C000-000000000046}:Unknown Automation Server.Range");
+    BEGIN
+    END;
+
+    EVENT XlSheet@1022::BeforeDoubleClick@1537(Target@1001 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020846-0000-0000-C000-000000000046}:Unknown Automation Server.Range";VAR Cancel@1000 : Boolean);
+    BEGIN
+    END;
+
+    EVENT XlSheet@1022::BeforeRightClick@1534(Target@1001 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020846-0000-0000-C000-000000000046}:Unknown Automation Server.Range";VAR Cancel@1000 : Boolean);
+    BEGIN
+    END;
+
+    EVENT XlSheet@1022::Activate@304();
+    BEGIN
+    END;
+
+    EVENT XlSheet@1022::Deactivate@1530();
+    BEGIN
+    END;
+
+    EVENT XlSheet@1022::Calculate@279();
+    BEGIN
+    END;
+
+    EVENT XlSheet@1022::Change@1545(Target@1000 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020846-0000-0000-C000-000000000046}:Unknown Automation Server.Range");
+    BEGIN
+    END;
+
+    EVENT XlSheet@1022::FollowHyperlink@1470(Target@1000 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00024431-0000-0000-C000-000000000046}:Unknown Automation Server.Hyperlink");
+    BEGIN
+    END;
+
+    EVENT XlSheet@1022::PivotTableUpdate@2156(Target@1000 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020872-0000-0000-C000-000000000046}:Unknown Automation Server.PivotTable");
+    BEGIN
+    END;
+
+    EVENT XlBook@1023::Open@1923();
+    BEGIN
+    END;
+
+    EVENT XlBook@1023::Activate@304();
+    BEGIN
+    END;
+
+    EVENT XlBook@1023::Deactivate@1530();
+    BEGIN
+    END;
+
+    EVENT XlBook@1023::BeforeClose@1546(VAR Cancel@1000 : Boolean);
+    BEGIN
+    END;
+
+    EVENT XlBook@1023::BeforeSave@1547(SaveAsUI@1001 : Boolean;VAR Cancel@1000 : Boolean);
+    BEGIN
+    END;
+
+    EVENT XlBook@1023::BeforePrint@1549(VAR Cancel@1000 : Boolean);
+    BEGIN
+    END;
+
+    EVENT XlBook@1023::NewSheet@1550(Sh@1000 : Automation ":{00020400-0000-0000-C000-000000000046}:''.IDISPATCH");
+    BEGIN
+    END;
+
+    EVENT XlBook@1023::AddinInstall@1552();
+    BEGIN
+    END;
+
+    EVENT XlBook@1023::AddinUninstall@1553();
+    BEGIN
+    END;
+
+    EVENT XlBook@1023::WindowResize@1554(Wn@1000 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020893-0000-0000-C000-000000000046}:Unknown Automation Server.Window");
+    BEGIN
+    END;
+
+    EVENT XlBook@1023::WindowActivate@1556(Wn@1000 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020893-0000-0000-C000-000000000046}:Unknown Automation Server.Window");
+    BEGIN
+    END;
+
+    EVENT XlBook@1023::WindowDeactivate@1557(Wn@1000 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020893-0000-0000-C000-000000000046}:Unknown Automation Server.Window");
+    BEGIN
+    END;
+
+    EVENT XlBook@1023::SheetSelectionChange@1558(Sh@1001 : Automation ":{00020400-0000-0000-C000-000000000046}:''.IDISPATCH";Target@1000 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020846-0000-0000-C000-000000000046}:Unknown Automation Server.Range");
+    BEGIN
+    END;
+
+    EVENT XlBook@1023::SheetBeforeDoubleClick@1559(Sh@1002 : Automation ":{00020400-0000-0000-C000-000000000046}:''.IDISPATCH";Target@1001 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020846-0000-0000-C000-000000000046}:Unknown Automation Server.Range";VAR Cancel@1000 : Boolean);
+    BEGIN
+    END;
+
+    EVENT XlBook@1023::SheetBeforeRightClick@1560(Sh@1002 : Automation ":{00020400-0000-0000-C000-000000000046}:''.IDISPATCH";Target@1001 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020846-0000-0000-C000-000000000046}:Unknown Automation Server.Range";VAR Cancel@1000 : Boolean);
+    BEGIN
+    END;
+
+    EVENT XlBook@1023::SheetActivate@1561(Sh@1000 : Automation ":{00020400-0000-0000-C000-000000000046}:''.IDISPATCH");
+    BEGIN
+    END;
+
+    EVENT XlBook@1023::SheetDeactivate@1562(Sh@1000 : Automation ":{00020400-0000-0000-C000-000000000046}:''.IDISPATCH");
+    BEGIN
+    END;
+
+    EVENT XlBook@1023::SheetCalculate@1563(Sh@1000 : Automation ":{00020400-0000-0000-C000-000000000046}:''.IDISPATCH");
+    BEGIN
+    END;
+
+    EVENT XlBook@1023::SheetChange@1564(Sh@1001 : Automation ":{00020400-0000-0000-C000-000000000046}:''.IDISPATCH";Target@1000 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020846-0000-0000-C000-000000000046}:Unknown Automation Server.Range");
+    BEGIN
+    END;
+
+    EVENT XlBook@1023::SheetFollowHyperlink@1854(Sh@1001 : Automation ":{00020400-0000-0000-C000-000000000046}:''.IDISPATCH";Target@1000 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00024431-0000-0000-C000-000000000046}:Unknown Automation Server.Hyperlink");
+    BEGIN
+    END;
+
+    EVENT XlBook@1023::SheetPivotTableUpdate@2157(Sh@1001 : Automation ":{00020400-0000-0000-C000-000000000046}:''.IDISPATCH";Target@1000 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020872-0000-0000-C000-000000000046}:Unknown Automation Server.PivotTable");
+    BEGIN
+    END;
+
+    EVENT XlBook@1023::PivotTableCloseConnection@2158(Target@1000 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020872-0000-0000-C000-000000000046}:Unknown Automation Server.PivotTable");
+    BEGIN
+    END;
+
+    EVENT XlBook@1023::PivotTableOpenConnection@2159(Target@1000 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020872-0000-0000-C000-000000000046}:Unknown Automation Server.PivotTable");
+    BEGIN
+    END;
+
+    EVENT XlBook@1023::Sync@2266(SyncEventType@1000 : Integer);
+    BEGIN
+    END;
+
+    EVENT XlBook@1023::BeforeXmlImport@2283(Map@1003 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{0002447B-0000-0000-C000-000000000046}:Unknown Automation Server.XmlMap";Url@1002 : Text[1024];IsRefresh@1001 : Boolean;VAR Cancel@1000 : Boolean);
+    BEGIN
+    END;
+
+    EVENT XlBook@1023::AfterXmlImport@2285(Map@1002 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{0002447B-0000-0000-C000-000000000046}:Unknown Automation Server.XmlMap";IsRefresh@1001 : Boolean;Result@1000 : Integer);
+    BEGIN
+    END;
+
+    EVENT XlBook@1023::BeforeXmlExport@2287(Map@1002 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{0002447B-0000-0000-C000-000000000046}:Unknown Automation Server.XmlMap";Url@1001 : Text[1024];VAR Cancel@1000 : Boolean);
+    BEGIN
+    END;
+
+    EVENT XlBook@1023::AfterXmlExport@2288(Map@1002 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{0002447B-0000-0000-C000-000000000046}:Unknown Automation Server.XmlMap";Url@1001 : Text[1024];Result@1000 : Integer);
+    BEGIN
+    END;
+
+    EVENT XlApp@1024::NewWorkbook@1565(Wb@1000 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020819-0000-0000-C000-000000000046}:Unknown Automation Server.Workbook");
+    BEGIN
+    END;
+
+    EVENT XlApp@1024::SheetSelectionChange@1558(Sh@1001 : Automation ":{00020400-0000-0000-C000-000000000046}:''.IDISPATCH";Target@1000 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020846-0000-0000-C000-000000000046}:Unknown Automation Server.Range");
+    BEGIN
+    END;
+
+    EVENT XlApp@1024::SheetBeforeDoubleClick@1559(Sh@1002 : Automation ":{00020400-0000-0000-C000-000000000046}:''.IDISPATCH";Target@1001 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020846-0000-0000-C000-000000000046}:Unknown Automation Server.Range";VAR Cancel@1000 : Boolean);
+    BEGIN
+    END;
+
+    EVENT XlApp@1024::SheetBeforeRightClick@1560(Sh@1002 : Automation ":{00020400-0000-0000-C000-000000000046}:''.IDISPATCH";Target@1001 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020846-0000-0000-C000-000000000046}:Unknown Automation Server.Range";VAR Cancel@1000 : Boolean);
+    BEGIN
+    END;
+
+    EVENT XlApp@1024::SheetActivate@1561(Sh@1000 : Automation ":{00020400-0000-0000-C000-000000000046}:''.IDISPATCH");
+    BEGIN
+    END;
+
+    EVENT XlApp@1024::SheetDeactivate@1562(Sh@1000 : Automation ":{00020400-0000-0000-C000-000000000046}:''.IDISPATCH");
+    BEGIN
+    END;
+
+    EVENT XlApp@1024::SheetCalculate@1563(Sh@1000 : Automation ":{00020400-0000-0000-C000-000000000046}:''.IDISPATCH");
+    BEGIN
+    END;
+
+    EVENT XlApp@1024::SheetChange@1564(Sh@1001 : Automation ":{00020400-0000-0000-C000-000000000046}:''.IDISPATCH";Target@1000 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020846-0000-0000-C000-000000000046}:Unknown Automation Server.Range");
+    BEGIN
+    END;
+
+    EVENT XlApp@1024::WorkbookOpen@1567(Wb@1000 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020819-0000-0000-C000-000000000046}:Unknown Automation Server.Workbook");
+    BEGIN
+    END;
+
+    EVENT XlApp@1024::WorkbookActivate@1568(Wb@1000 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020819-0000-0000-C000-000000000046}:Unknown Automation Server.Workbook");
+    BEGIN
+    END;
+
+    EVENT XlApp@1024::WorkbookDeactivate@1569(Wb@1000 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020819-0000-0000-C000-000000000046}:Unknown Automation Server.Workbook");
+    BEGIN
+    END;
+
+    EVENT XlApp@1024::WorkbookBeforeClose@1570(Wb@1001 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020819-0000-0000-C000-000000000046}:Unknown Automation Server.Workbook";VAR Cancel@1000 : Boolean);
+    BEGIN
+    END;
+
+    EVENT XlApp@1024::WorkbookBeforeSave@1571(Wb@1002 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020819-0000-0000-C000-000000000046}:Unknown Automation Server.Workbook";SaveAsUI@1001 : Boolean;VAR Cancel@1000 : Boolean);
+    BEGIN
+    END;
+
+    EVENT XlApp@1024::WorkbookBeforePrint@1572(Wb@1001 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020819-0000-0000-C000-000000000046}:Unknown Automation Server.Workbook";VAR Cancel@1000 : Boolean);
+    BEGIN
+    END;
+
+    EVENT XlApp@1024::WorkbookNewSheet@1573(Wb@1001 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020819-0000-0000-C000-000000000046}:Unknown Automation Server.Workbook";Sh@1000 : Automation ":{00020400-0000-0000-C000-000000000046}:''.IDISPATCH");
+    BEGIN
+    END;
+
+    EVENT XlApp@1024::WorkbookAddinInstall@1574(Wb@1000 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020819-0000-0000-C000-000000000046}:Unknown Automation Server.Workbook");
+    BEGIN
+    END;
+
+    EVENT XlApp@1024::WorkbookAddinUninstall@1575(Wb@1000 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020819-0000-0000-C000-000000000046}:Unknown Automation Server.Workbook");
+    BEGIN
+    END;
+
+    EVENT XlApp@1024::WindowResize@1554(Wb@1001 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020819-0000-0000-C000-000000000046}:Unknown Automation Server.Workbook";Wn@1000 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020893-0000-0000-C000-000000000046}:Unknown Automation Server.Window");
+    BEGIN
+    END;
+
+    EVENT XlApp@1024::WindowActivate@1556(Wb@1001 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020819-0000-0000-C000-000000000046}:Unknown Automation Server.Workbook";Wn@1000 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020893-0000-0000-C000-000000000046}:Unknown Automation Server.Window");
+    BEGIN
+    END;
+
+    EVENT XlApp@1024::WindowDeactivate@1557(Wb@1001 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020819-0000-0000-C000-000000000046}:Unknown Automation Server.Workbook";Wn@1000 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020893-0000-0000-C000-000000000046}:Unknown Automation Server.Window");
+    BEGIN
+    END;
+
+    EVENT XlApp@1024::SheetFollowHyperlink@1854(Sh@1001 : Automation ":{00020400-0000-0000-C000-000000000046}:''.IDISPATCH";Target@1000 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00024431-0000-0000-C000-000000000046}:Unknown Automation Server.Hyperlink");
+    BEGIN
+    END;
+
+    EVENT XlApp@1024::SheetPivotTableUpdate@2157(Sh@1001 : Automation ":{00020400-0000-0000-C000-000000000046}:''.IDISPATCH";Target@1000 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020872-0000-0000-C000-000000000046}:Unknown Automation Server.PivotTable");
+    BEGIN
+    END;
+
+    EVENT XlApp@1024::WorkbookPivotTableCloseConnect@2160(Wb@1001 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020819-0000-0000-C000-000000000046}:Unknown Automation Server.Workbook";Target@1000 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020872-0000-0000-C000-000000000046}:Unknown Automation Server.PivotTable");
+    BEGIN
+    END;
+
+    EVENT XlApp@1024::WorkbookPivotTableOpenConnecti@2161(Wb@1001 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020819-0000-0000-C000-000000000046}:Unknown Automation Server.Workbook";Target@1000 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020872-0000-0000-C000-000000000046}:Unknown Automation Server.PivotTable");
+    BEGIN
+    END;
+
+    EVENT XlApp@1024::WorkbookSync@2289(Wb@1001 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020819-0000-0000-C000-000000000046}:Unknown Automation Server.Workbook";SyncEventType@1000 : Integer);
+    BEGIN
+    END;
+
+    EVENT XlApp@1024::WorkbookBeforeXmlImport@2290(Wb@1004 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020819-0000-0000-C000-000000000046}:Unknown Automation Server.Workbook";Map@1003 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{0002447B-0000-0000-C000-000000000046}:Unknown Automation Server.XmlMap";Url@1002 : Text[1024];IsRefresh@1001 : Boolean;VAR Cancel@1000 : Boolean);
+    BEGIN
+    END;
+
+    EVENT XlApp@1024::WorkbookAfterXmlImport@2291(Wb@1003 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020819-0000-0000-C000-000000000046}:Unknown Automation Server.Workbook";Map@1002 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{0002447B-0000-0000-C000-000000000046}:Unknown Automation Server.XmlMap";IsRefresh@1001 : Boolean;Result@1000 : Integer);
+    BEGIN
+    END;
+
+    EVENT XlApp@1024::WorkbookBeforeXmlExport@2292(Wb@1003 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020819-0000-0000-C000-000000000046}:Unknown Automation Server.Workbook";Map@1002 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{0002447B-0000-0000-C000-000000000046}:Unknown Automation Server.XmlMap";Url@1001 : Text[1024];VAR Cancel@1000 : Boolean);
+    BEGIN
+    END;
+
+    EVENT XlApp@1024::WorkbookAfterXmlExport@2293(Wb@1003 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{00020819-0000-0000-C000-000000000046}:Unknown Automation Server.Workbook";Map@1002 : Automation "{00020813-0000-0000-C000-000000000046} 1.5:{0002447B-0000-0000-C000-000000000046}:Unknown Automation Server.XmlMap";Url@1001 : Text[1024];Result@1000 : Integer);
+    BEGIN
+    END;
+
+    BEGIN
+    {
+      BRK0001 SK  12/01/11: Added code to resolve 1099-code error.
+    }
+    END.
+  }
+}
+
+OBJECT XMLport 8610 Setup Data Schema
+{
+  OBJECT-PROPERTIES
+  {
+    Date=12/01/11;
+    Time=[ 1:55:53 AM];
+    Version List=NAVW16.00,AP6.02.001;
+  }
+  PROPERTIES
+  {
+    CaptionML=[ENU=Setup Data Schema;
+               ESM=Configurar esquema datos;
+               FRC=Sch‚ma des donn‚es de param‚trage;
+               ENC=Setup Data Schema];
+    DefaultNamespace=http://www.w3.org/2001/XMLSchema;
+    UseDefaultNamespace=Yes;
+  }
+  ELEMENTS
+  {
+    { [{F60776DD-38DE-46BC-9AD4-9F31B2032ABE}];  ;xsd:schema          ;Element ;Text     }
+
+    { [{E1262705-5AB6-41B2-B1A3-90E1D4F4573D}];1 ;xmlns:xsd           ;Attribute;Text   ;
+                                                  Export::OnBeforePassVariable=BEGIN
+                                                                                 IF ISSERVICETIER THEN currXMLport.SKIP;
+                                                                                 "xmlns:xsd" := 'http://www.w3.org/2001/XMLSchema';
+                                                                               END;
+                                                                                }
+
+    { [{0F3D2055-88AF-49CC-82F8-40D9364AA98B}];1 ;xsd:element         ;Element ;Text     }
+
+    { [{90E7E83D-3FDB-438B-B9CC-CB3F8852307A}];2 ;name                ;Attribute;Text   ;
+                                                  Export::OnBeforePassVariable=BEGIN
+                                                                                 name := 'DataList';
+                                                                               END;
+                                                                                }
+
+    { [{C1F0BF59-E5AA-4998-ABDB-FB1B539025C2}];2 ;xsd:complexType     ;Element ;Text     }
+
+    { [{11FF27B6-FF41-42C9-BB70-DC75F803FF3C}];3 ;xsd:sequence        ;Element ;Text     }
+
+    { [{49E104CB-E930-4880-8F53-FD2F43A257EC}];4 ;xsd:element         ;Element ;Table   ;
+                                                  SourceTable=Table8613 }
+
+    { [{B836D419-93F1-4E5D-AD13-6AA755277CD8}];5 ;name                ;Attribute;Text   ;
+                                                  VariableName=name1;
+                                                  Export::OnBeforePassVariable=BEGIN
+                                                                                 "Migration Table".CALCFIELDS("Table Name");
+                                                                                 name1 := GetElementName("Migration Table"."Table Name") + 'List';
+                                                                               END;
+                                                                                }
+
+    { [{CFD20270-BC06-4703-9E8F-BD1DBBD53219}];5 ;xsd:complexType     ;Element ;Text    ;
+                                                  VariableName=xsd:complexType1 }
+
+    { [{D9850F75-DF4F-4E71-A0CB-519A93E68A14}];6 ;xsd:sequence        ;Element ;Text    ;
+                                                  VariableName=xsd:sequence1 }
+
+    { [{DF322963-8F2E-4A07-89EB-1934B7930AB0}];7 ;xsd:element         ;Element ;Text    ;
+                                                  VariableName=xsd:element1 }
+
+    { [{F1740C63-284C-4828-A9B0-50DBE4334180}];8 ;type                ;Attribute;Text   ;
+                                                  Export::OnBeforePassVariable=BEGIN
+                                                                                 type := 'xsd:integer';
+                                                                               END;
+                                                                                }
+
+    { [{FA53F6BC-E189-4D2A-89DF-690F655B4B7B}];8 ;name                ;Attribute;Text   ;
+                                                  VariableName=name2;
+                                                  Export::OnBeforePassVariable=BEGIN
+                                                                                 name2 := 'TableID'
+                                                                               END;
+                                                                                }
+
+    { [{51C5A2A6-E228-40F7-AEB6-FC5136D052A3}];7 ;xsd:element         ;Element ;Text    ;
+                                                  VariableName=xsd:element2 }
+
+    { [{A2CA0F09-7189-4BB3-8AD3-B1F9B86A4B22}];8 ;name                ;Attribute;Text   ;
+                                                  VariableName=name4;
+                                                  Export::OnBeforePassVariable=BEGIN
+                                                                                 "Migration Table".CALCFIELDS("Table Name");
+                                                                                 name4 := GetElementName("Migration Table"."Table Name");
+                                                                               END;
+                                                                                }
+
+    { [{E010A641-E724-4D22-AEA8-3AF4FE4D71EF}];8 ;maxOccurs           ;Attribute;Text   ;
+                                                  Export::OnBeforePassVariable=BEGIN
+                                                                                 maxOccurs := 'unbounded';
+                                                                               END;
+                                                                                }
+
+    { [{28BABA77-8B1E-42D8-9537-D1D93EA6B6F7}];8 ;xsd:complexType     ;Element ;Text    ;
+                                                  VariableName=xsd:complexType2 }
+
+    { [{A22CB86B-2721-44A0-A2CF-8EA980E82179}];9 ;xsd:sequence        ;Element ;Text    ;
+                                                  VariableName=xsd:sequence2 }
+
+    { [{2142B629-CF56-4508-AA6A-D5120D66C2F6}];10;xsd:element         ;Element ;Table   ;
+                                                  SourceTable=Table8616;
+                                                  LinkFields=Field1=FIELD(Field1);
+                                                  LinkTable=Migration Table;
+                                                  Export::OnPreXMLItem=BEGIN
+                                                                         "Migration Table Field".SETRANGE(Include,TRUE);
+                                                                       END;
+                                                                        }
+
+    { [{25F56AB4-CAE9-4796-A1BD-53268F13B884}];11;type                ;Attribute;Text   ;
+                                                  VariableName=type1;
+                                                  Export::OnBeforePassVariable=BEGIN
+                                                                                 type1 := GetXSDType("Migration Table Field".TableID,"Migration Table Field".FieldID);
+                                                                               END;
+                                                                                }
+
+    { [{CC9A34BE-3406-46AD-B849-E5EDC60AF1A6}];11;name                ;Attribute;Text   ;
+                                                  VariableName=name5;
+                                                  Export::OnBeforePassVariable=BEGIN
+                                                                                 "Migration Table Field".CALCFIELDS("Field Name");
+                                                                                 name5 := GetElementName("Migration Table Field"."Field Name");
+                                                                               END;
+                                                                                }
+
+  }
+  EVENTS
+  {
+  }
+  REQUESTPAGE
+  {
+    PROPERTIES
+    {
+    }
+    CONTROLS
+    {
+    }
+  }
+  CODE
+  {
+
+    PROCEDURE GetElementName@5(NameIn@1000 : Text[250]) : Text[250];
+    BEGIN
+      NameIn := DELCHR(NameIn,'=','ï''`');
+      // BRK0001 >>
+      NameIn := DELCHR(CONVERTSTR(NameIn,'<>,./\+-&()%$','             '),'=',' '); // Changed added $ symbol and one additional space
+      // BRK0001 <<
+      NameIn := DELCHR(NameIn,'=',' ');
+      // BRK0001 >>
+      IF (NameIn[1] >='0') AND (NameIn[1] <='9') THEN
+        NameIn := '_' + NameIn;
+      // BRK0001 <<
+      EXIT(NameIn);
+    END;
+
+    PROCEDURE GetXSDType@10(TableID@1000 : Integer;FieldID@1001 : Integer) : Text[30];
+    VAR
+      Field@1002 : Record 2000000041;
+    BEGIN
+      IF Field.GET(TableID, FieldID) THEN
+        CASE Field.Type OF
+          Field.Type::Integer: EXIT('xsd:integer');
+          Field.Type::Date: EXIT('xsd:date');
+          Field.Type::Time: EXIT('xsd:time');
+          Field.Type::Boolean: EXIT('xsd:boolean');
+          Field.Type::DateTime: EXIT('xsd:dateTime');
+          ELSE
+            EXIT('xsd:string');
+        END;
+    END;
+
+    BEGIN
+    {
+      BRK0001 SK  12/01/11: Added code for 1099-code error.
+    }
+    END.
+  }
+}
+

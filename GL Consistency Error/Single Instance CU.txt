@@ -1,0 +1,42 @@
+OBJECT Codeunit 80034 GL Consistency Error Test
+{
+  OBJECT-PROPERTIES
+  {
+    Date=10/11/11;
+    Time=[ 2:50:02 PM];
+    Modified=Yes;
+    Version List=SK;
+  }
+  PROPERTIES
+  {
+    SingleInstance=Yes;
+    OnRun=BEGIN
+            IF NOT StoreToTemp THEN BEGIN
+              StoreToTemp := TRUE;
+            END ELSE
+              FORM.RUNMODAL(0,TempGLEntry);
+          END;
+
+  }
+  CODE
+  {
+    VAR
+      TempGLEntry@1000000000 : TEMPORARY Record 17;
+      StoreToTemp@1000000001 : Boolean;
+
+    PROCEDURE InsertGL@1000000000(GLEntry@1000000000 : Record 17);
+    BEGIN
+      IF StoreToTemp THEN BEGIN
+        TempGLEntry := GLEntry;
+        IF NOT TempGLEntry.INSERT THEN BEGIN
+           TempGLEntry.DELETEALL;
+           TempGLEntry.INSERT;
+       END;
+      END;
+    END;
+
+    BEGIN
+    END.
+  }
+}
+

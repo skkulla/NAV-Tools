@@ -1,0 +1,543 @@
+OBJECT Dataport 50021 Import G/L
+{
+  OBJECT-PROPERTIES
+  {
+    Date=03/23/11;
+    Time=[ 3:05:29 PM];
+    Modified=Yes;
+    Version List=SIM02.28;
+  }
+  PROPERTIES
+  {
+    Import=Yes;
+    FieldStartDelimiter=;
+    FieldEndDelimiter=;
+    FieldSeparator=<TAB>;
+    OnPreDataport=BEGIN
+                    CurrDataport.FILENAME := DataportFileName;
+                    CreateErrorLog(CurrDataport.FILENAME);
+                    CLEAR(Counter);
+                  END;
+
+    OnPostDataport=BEGIN
+                     CloseErrorLog;
+                     IF GlobalError THEN
+                       ERROR('One or more errors occured, please see .err.html file.');
+                   END;
+
+  }
+  DATAITEMS
+  {
+    { PROPERTIES
+      {
+        DataItemTable=Table81;
+        DataItemTableView=SORTING(Journal Template Name,Journal Batch Name,Line No.);
+        OnPreDataItem=BEGIN
+                        GLSetup.GET;
+
+                        IF (G_JnlTemplateName = '') OR (G_JnlBatchName = '') THEN
+                          ERROR(Text001);
+
+                        SETRANGE("Journal Template Name",G_JnlTemplateName);
+                        SETRANGE("Journal Batch Name",G_JnlBatchName);
+                        IF FIND('-') THEN
+                          IF NOT CONFIRM(Text002, TRUE, G_JnlTemplateName, G_JnlBatchName) THEN
+                            ERROR(Text003)
+                          ELSE
+                            DELETEALL(TRUE);
+
+                        G_LineNo := 0;
+                      END;
+
+        OnBeforeImportRecord=BEGIN
+                               CLEAR(ImportColumn);
+                             END;
+
+        OnAfterImportRecord=VAR
+                              _discDays@1000000002 : Integer;
+                              _netDays@1000000003 : Integer;
+                              _tmpDec@1000000004 : Decimal;
+                              BusinessUnit@1000000011 : Record 220;
+                              Campaign@1000000013 : Record 5071;
+                              GenBusPostingGroup@1000000014 : Record 250;
+                              GenProdPostingGroup@1000000015 : Record 251;
+                              TaxGroup@1000000016 : Record 321;
+                              Customer@1000000017 : Record 18;
+                              Vendor@1000000018 : Record 23;
+                              PaymentTerms@1000000019 : Record 3;
+                              Reasons@1000000020 : Record 231;
+                              DimValue@1000000021 : Record 349;
+                              DecVar@1000000001 : Decimal;
+                              IntVar@1000000005 : Integer;
+                              DateVar@1000000006 : Date;
+                            BEGIN
+                              IF (ImportColumn[16] <> '') AND (EVALUATE(DecVar,ImportColumn[16])) THEN BEGIN
+                                IF (DecVar <> 0) THEN BEGIN
+                                  G_LineNo += 10000;
+
+                                  INIT;
+                                  VALIDATE("Journal Template Name",G_JnlTemplateName);
+                                  VALIDATE("Journal Batch Name",G_JnlBatchName);
+                                  VALIDATE("Line No.",G_LineNo);
+                                  INSERT(TRUE);
+
+                                  // Column 1 - Posting Date
+                                  IF (EVALUATE(DateVar,ImportColumn[1])) THEN
+                                    VALIDATE("Posting Date",DateVar)
+                                  ELSE
+                                    ErrMsg('Gen. Journal Line',
+                                           STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+                                           'Posting Date',ImportColumn[1],
+                                           STRSUBSTNO(Text50002 + Text50003,'Date'));
+
+                                  // Column 2 - Document Date
+                                  IF (EVALUATE(DateVar,ImportColumn[2])) THEN
+                                    VALIDATE("Document Date",DateVar)
+                                  ELSE
+                                    ErrMsg('Gen. Journal Line',
+                                           STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+                                           'Document Date',ImportColumn[1],
+                                           STRSUBSTNO(Text50002 + Text50003,'Date'));
+
+                                  // Column 3 - Document Type
+                                  IF (EVALUATE("Document Type",ImportColumn[3])) THEN
+                                    VALIDATE("Posting Date")
+                                  ELSE
+                                    ErrMsg('Gen. Journal Line',
+                                           STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+                                           'Document Type',ImportColumn[3],
+                                           STRSUBSTNO(Text50002 + Text50003,'Option'));
+
+                                  // Column 4 - Document No.
+                                  IF (ImportColumn[4] <> '') THEN
+                                    VALIDATE("Document No.",COPYSTR(ImportColumn[4],1,MAXSTRLEN("Document No.")));
+
+                                  // column 5 - External Document No.
+                                  IF (ImportColumn[5] <> '') THEN
+                                    VALIDATE("External Document No.",COPYSTR(ImportColumn[5],1,MAXSTRLEN("External Document No.")));
+
+                                  // Column 6 - Document Type
+                                  IF (EVALUATE("Account Type",ImportColumn[6])) THEN
+                                    VALIDATE("Account Type")
+                                  ELSE
+                                    ErrMsg('Gen. Journal Line',
+                                           STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+                                           'Account Type',ImportColumn[6],
+                                           STRSUBSTNO(Text50002 + Text50003,'Option'));
+
+                                  // Column 7 - Account No.
+                                  IF (ImportColumn[7] <> '') AND (STRLEN(ImportColumn[7]) <= MAXSTRLEN("Account No.")) THEN
+                                    VALIDATE("Account No.",ImportColumn[7])
+                                  ELSE
+                                    ErrMsg('Gen. Journal Line',
+                                           STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+                                           'Account No.',ImportColumn[7],
+                                           STRSUBSTNO(Text50002 + Text50004,MAXSTRLEN("Account No.")));
+
+                                  // Column 8 - Description
+                                  IF (ImportColumn[8] <> '') THEN
+                                    VALIDATE(Description,COPYSTR(ImportColumn[8],1,MAXSTRLEN(Description)))
+                                  ELSE
+                                    ErrMsg('Gen. Journal Line',
+                                           STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+                                           'Description',ImportColumn[8],
+                                           STRSUBSTNO(Text50002 + Text50005));
+
+                                  // Column 9 - Business Unit Cost
+                                  IF (ImportColumn[9] <> '') AND (STRLEN(ImportColumn[9]) <= MAXSTRLEN("Business Unit Code")) THEN BEGIN
+                                    IF (BusinessUnit.GET(ImportColumn[9])) THEN
+                                      VALIDATE(Description,COPYSTR(ImportColumn[8],1,MAXSTRLEN(Description)))
+                                    ELSE
+                                      ErrMsg('Gen. Journal Line',
+                                             STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+                                             'Business Unit Code',ImportColumn[9],
+                                             STRSUBSTNO(Text50002 + Text50006,ImportColumn[9]));
+                                  END ELSE
+                                    ErrMsg('Gen. Journal Line',
+                                           STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+                                           'Business Unit Code',ImportColumn[9],
+                                           STRSUBSTNO(Text50002 + Text50004,MAXSTRLEN("Business Unit Code")));
+
+                                  // Column 10 - Salesperson / Purchaser Code
+                                  IF (ImportColumn[10] <> '') AND (STRLEN(ImportColumn[10]) <= MAXSTRLEN("Salespers./Purch. Code")) THEN BEGIN
+                                    IF (SalesPerson.GET(ImportColumn[10])) THEN
+                                      VALIDATE("Salespers./Purch. Code",COPYSTR(ImportColumn[10],1,MAXSTRLEN("Salespers./Purch. Code")))
+                                    ELSE
+                                      ErrMsg('Gen. Journal Line',
+                                             STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+                                             'Salespers./Purch. Code',ImportColumn[10],
+                                             STRSUBSTNO(Text50002 + Text50006,ImportColumn[10]));
+                                  END ELSE
+                                    ErrMsg('Gen. Journal Line',
+                                           STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+                                           'Business Unit Code',ImportColumn[9],
+                                           STRSUBSTNO(Text50002 + Text50004,MAXSTRLEN("Salespers./Purch. Code")));
+
+                                  // Column 11 - Campaign No.
+                                  IF (ImportColumn[11] <> '') AND (STRLEN(ImportColumn[11]) <= MAXSTRLEN("Campaign No.")) THEN BEGIN
+                                    IF (Campaign.GET(ImportColumn[11])) THEN
+                                      VALIDATE("Campaign No.",COPYSTR(ImportColumn[11],1,MAXSTRLEN("Campaign No.")))
+                                    ELSE
+                                      ErrMsg('Gen. Journal Line',
+                                             STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+                                             'Campaign No.',ImportColumn[11],
+                                             STRSUBSTNO(Text50002 + Text50006,ImportColumn[11]));
+                                  END ELSE
+                                    ErrMsg('Gen. Journal Line',
+                                           STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+                                           'Campaign No.',ImportColumn[11],
+                                           STRSUBSTNO(Text50002 + Text50004,MAXSTRLEN("Campaign No.")));
+
+                                  // Column 12 - Gen. Posting Type
+                                  IF (EVALUATE("Gen. Posting Type",ImportColumn[12])) THEN
+                                    VALIDATE("Gen. Posting Type")
+                                  ELSE
+                                    ErrMsg('Gen. Journal Line',
+                                           STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+                                           'Gen. Posting Type',ImportColumn[12],
+                                           STRSUBSTNO(Text50002 + Text50003,'Option'));
+
+                                  // Column 13 - Gen. Bus. Posting Group
+                                  IF (ImportColumn[13] <> '') AND (STRLEN(ImportColumn[13]) <= MAXSTRLEN("Gen. Bus. Posting Group")) THEN BEGIN
+                                    IF (GenBusPostingGroup.GET(ImportColumn[13])) THEN
+                                      VALIDATE("Gen. Bus. Posting Group",COPYSTR(ImportColumn[13],1,MAXSTRLEN("Gen. Bus. Posting Group")))
+                                    ELSE
+                                      ErrMsg('Gen. Journal Line',
+                                             STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+                                             'Gen. Bus. Posting Group',ImportColumn[13],
+                                             STRSUBSTNO(Text50002 + Text50006,ImportColumn[13]));
+                                  END ELSE
+                                    ErrMsg('Gen. Journal Line',
+                                           STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+                                           'Gen. Bus. Posting Group',ImportColumn[13],
+                                           STRSUBSTNO(Text50002 + Text50004,MAXSTRLEN("Gen. Bus. Posting Group")));
+
+                                  // Column 14 - Gen. Bus. Posting Group
+                                  IF (ImportColumn[14] <> '') AND (STRLEN(ImportColumn[14]) <= MAXSTRLEN("Gen. Prod. Posting Group")) THEN BEGIN
+                                    IF (GenProdPostingGroup.GET(ImportColumn[14])) THEN
+                                      VALIDATE("Gen. Prod. Posting Group",COPYSTR(ImportColumn[14],1,MAXSTRLEN("Gen. Prod. Posting Group")))
+                                    ELSE
+                                      ErrMsg('Gen. Journal Line',
+                                             STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+                                             'Gen. Prod. Posting Group',ImportColumn[14],
+                                             STRSUBSTNO(Text50002 + Text50006,ImportColumn[14]));
+                                  END ELSE
+                                    ErrMsg('Gen. Journal Line',
+                                           STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+                                           'Gen. Prod. Posting Group',ImportColumn[14],
+                                           STRSUBSTNO(Text50002 + Text50004,MAXSTRLEN("Gen. Prod. Posting Group")));
+
+                                  // Column 15 - Tax Group code
+                                  IF (ImportColumn[15] <> '') AND (STRLEN(ImportColumn[15]) <= MAXSTRLEN("Tax Group Code")) THEN BEGIN
+                                    IF (TaxGroup.GET(ImportColumn[15])) THEN
+                                      VALIDATE("Tax Group Code",COPYSTR(ImportColumn[15],1,MAXSTRLEN("Tax Group Code")))
+                                    ELSE
+                                      ErrMsg('Gen. Journal Line',
+                                             STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+                                             'Tax Group Code',ImportColumn[15],
+                                             STRSUBSTNO(Text50002 + Text50006,ImportColumn[15]));
+                                  END ELSE
+                                    ErrMsg('Gen. Journal Line',
+                                           STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+                                           'Gen. Prod. Posting Group',ImportColumn[14],
+                                           STRSUBSTNO(Text50002 + Text50004,MAXSTRLEN("Tax Group Code")));
+
+                                  // Column 16 - Amount
+                                  IF (EVALUATE(DecVar,ImportColumn[16])) THEN
+                                    VALIDATE(Amount,DecVar)
+                                  ELSE
+                                    ErrMsg('Gen. Journal Line',
+                                           STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+                                           'Amount',ImportColumn[16],
+                                           STRSUBSTNO(Text50002 + Text50003,'Decimal'));
+
+                                  // Column 17 - Bill-to/Pay-to No.
+                                  IF (ImportColumn[17] <> '') AND (STRLEN(ImportColumn[17]) <= MAXSTRLEN("Bill-to/Pay-to No.")) THEN BEGIN
+                                    IF (Customer.GET(ImportColumn[17])) OR (Vendor.GET(ImportColumn[17])) THEN
+                                      VALIDATE("Bill-to/Pay-to No.",COPYSTR(ImportColumn[17],1,MAXSTRLEN("Bill-to/Pay-to No.")))
+                                    ELSE
+                                      ErrMsg('Gen. Journal Line',
+                                             STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+                                             'Bill-to/Pay-to No.',ImportColumn[17],
+                                             STRSUBSTNO(Text50002 + Text50006,ImportColumn[17]));
+                                  END ELSE
+                                    ErrMsg('Gen. Journal Line',
+                                           STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+                                           'Bill-to/Pay-to No.',ImportColumn[17],
+                                           STRSUBSTNO(Text50002 + Text50004,MAXSTRLEN("Bill-to/Pay-to No.")));
+
+
+                                  // Column 26 - Payment Terms Code
+                                  IF (ImportColumn[26] <> '') AND (STRLEN(ImportColumn[26]) <= MAXSTRLEN("Payment Terms Code")) THEN BEGIN
+                                    IF (PaymentTerms.GET(ImportColumn[26])) THEN
+                                      VALIDATE("Payment Terms Code",COPYSTR(ImportColumn[26],1,MAXSTRLEN("Payment Terms Code")))
+                                    ELSE
+                                      ErrMsg('Gen. Journal Line',
+                                             STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+                                             'Payment Terms Code',ImportColumn[26],
+                                             STRSUBSTNO(Text50002 + Text50006,ImportColumn[26]));
+                                  END ELSE
+                                    ErrMsg('Gen. Journal Line',
+                                           STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+                                           'Payment Terms Code',ImportColumn[26],
+                                           STRSUBSTNO(Text50002 + Text50004,MAXSTRLEN("Payment Terms Code")));
+
+                                  // Column 27 - Payment Terms Code
+                                  IF (ImportColumn[27] <> '') AND (STRLEN(ImportColumn[27]) <= MAXSTRLEN("Reason Code")) THEN BEGIN
+                                    IF (Reasons.GET(ImportColumn[27])) THEN
+                                      VALIDATE("Reason Code",COPYSTR(ImportColumn[27],1,MAXSTRLEN("Reason Code")))
+                                    ELSE
+                                      ErrMsg('Gen. Journal Line',
+                                             STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+                                             'Reason Code',ImportColumn[27],
+                                             STRSUBSTNO(Text50002 + Text50006,ImportColumn[27]));
+                                  END ELSE
+                                    ErrMsg('Gen. Journal Line',
+                                           STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+                                           'Reason Code',ImportColumn[27],
+                                           STRSUBSTNO(Text50002 + Text50004,MAXSTRLEN("Reason Code")));
+
+
+                                  // Column 18 - Global Dimension 1 Code
+                                  IF (ImportColumn[18] <> '') AND (STRLEN(ImportColumn[18]) <= MAXSTRLEN("Shortcut Dimension 1 Code")) THEN BEGIN
+                                    IF (DimValue.GET(GLSetup."Shortcut Dimension 1 Code",ImportColumn[18])) THEN
+                                      VALIDATE("Shortcut Dimension 1 Code",COPYSTR(ImportColumn[18],1,MAXSTRLEN("Shortcut Dimension 1 Code")))
+                                    ELSE
+                                      ErrMsg('Gen. Journal Line',
+                                             STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+                                             'Shortcut Dimension 1 Code',ImportColumn[18],
+                                             STRSUBSTNO(Text50002 + Text50006,ImportColumn[18]));
+                                  END ELSE
+                                    ErrMsg('Gen. Journal Line',
+                                           STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+                                           'Shortcut Dimension 1 Code',ImportColumn[18],
+                                           STRSUBSTNO(Text50002 + Text50004,MAXSTRLEN("Shortcut Dimension 1 Code")));
+
+                                  // Column 19 - Global Dimension 2 Code
+                                  IF (ImportColumn[19] <> '') AND (STRLEN(ImportColumn[19]) <= MAXSTRLEN("Shortcut Dimension 2 Code")) THEN BEGIN
+                                    IF (DimValue.GET(GLSetup."Shortcut Dimension 2 Code",ImportColumn[19])) THEN
+                                      VALIDATE("Shortcut Dimension 2 Code",COPYSTR(ImportColumn[19],1,MAXSTRLEN("Shortcut Dimension 2 Code")))
+                                    ELSE
+                                      ErrMsg('Gen. Journal Line',
+                                             STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+                                             'Shortcut Dimension 2 Code',ImportColumn[19],
+                                             STRSUBSTNO(Text50002 + Text50006,ImportColumn[19]));
+                                  END ELSE
+                                    ErrMsg('Gen. Journal Line',
+                                           STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+                                           'Shortcut Dimension 2 Code',ImportColumn[19],
+                                           STRSUBSTNO(Text50002 + Text50004,MAXSTRLEN("Shortcut Dimension 2 Code")));
+                                  MODIFY(TRUE);
+
+                                  InsertOtherDimensions("Gen. Journal Line",GLSetup."Shortcut Dimension 3 Code",ImportColumn[20]);
+                                  InsertOtherDimensions("Gen. Journal Line",GLSetup."Shortcut Dimension 4 Code",ImportColumn[21]);
+                                  InsertOtherDimensions("Gen. Journal Line",GLSetup."Shortcut Dimension 5 Code",ImportColumn[22]);
+                                  InsertOtherDimensions("Gen. Journal Line",GLSetup."Shortcut Dimension 6 Code",ImportColumn[23]);
+                                  InsertOtherDimensions("Gen. Journal Line",GLSetup."Shortcut Dimension 7 Code",ImportColumn[24]);
+                                  InsertOtherDimensions("Gen. Journal Line",GLSetup."Shortcut Dimension 8 Code",ImportColumn[25]);
+
+                                END;
+                              END;
+                            END;
+
+      }
+      FIELDS
+      {
+        {      ;     ;ImportColumn[1]      }
+        {      ;     ;ImportColumn[2]      }
+        {      ;     ;ImportColumn[3]      }
+        {      ;     ;ImportColumn[4]      }
+        {      ;     ;ImportColumn[5]      }
+        {      ;     ;ImportColumn[6]      }
+        {      ;     ;ImportColumn[7]      }
+        {      ;     ;ImportColumn[8]      }
+        {      ;     ;ImportColumn[9]      }
+        {      ;     ;ImportColumn[10]     }
+        {      ;     ;ImportColumn[11]     }
+        {      ;     ;ImportColumn[12]     }
+        {      ;     ;ImportColumn[13]     }
+        {      ;     ;ImportColumn[14]     }
+        {      ;     ;ImportColumn[15]     }
+        {      ;     ;ImportColumn[16]     }
+        {      ;     ;ImportColumn[17]     }
+        {      ;     ;ImportColumn[18]     }
+        {      ;     ;ImportColumn[19]     }
+        {      ;     ;ImportColumn[20]     }
+        {      ;     ;ImportColumn[21]     }
+        {      ;     ;ImportColumn[22]     }
+        {      ;     ;ImportColumn[23]     }
+        {      ;     ;ImportColumn[24]     }
+        {      ;     ;ImportColumn[25]     }
+        {      ;     ;ImportColumn[26]     }
+        {      ;     ;ImportColumn[27]     }
+      }
+       }
+  }
+  REQUESTFORM
+  {
+    PROPERTIES
+    {
+      Width=11220;
+      Height=2970;
+      SaveValues=Yes;
+    }
+    CONTROLS
+    {
+      { 1   ;TextBox      ;3410 ;0    ;6160 ;440  ;InPage=-1;
+                                                   AssistEdit=Yes;
+                                                   SourceExpr=DataportFileName;
+                                                   OnAssistEdit=BEGIN
+                                                                  CurrDataport.FILENAME := DataportFileName;
+                                                                END;
+                                                                 }
+      { 1000000001;Label  ;0    ;0    ;3300 ;440  ;ParentControl=1;
+                                                   CaptionML=ENU=File Name }
+      { 1000000000;TextBox;3410 ;550  ;2310 ;440  ;InPage=-1;
+                                                   SourceExpr=G_JnlTemplateName;
+                                                   TableRelation="Gen. Journal Template" }
+      { 1000000002;Label  ;0    ;550  ;3300 ;440  ;ParentControl=1000000000;
+                                                   CaptionML=ENU=Template Name }
+      { 1000000003;TextBox;3410 ;1100 ;2310 ;440  ;InPage=-1;
+                                                   SourceExpr=G_JnlBatchName;
+                                                   OnLookup=BEGIN
+                                                              GenJnlBatch.FILTERGROUP := 2;
+                                                              GenJnlBatch.SETRANGE("Journal Template Name",G_JnlTemplateName);
+                                                              GenJnlBatch.FILTERGROUP := 0;
+                                                              IF FORM.RUNMODAL(0,GenJnlBatch) = ACTION::LookupOK THEN BEGIN
+                                                                G_JnlBatchName := GenJnlBatch.Name;
+                                                              END;
+                                                            END;
+                                                             }
+      { 1000000004;Label  ;0    ;1100 ;3300 ;440  ;ParentControl=1000000003;
+                                                   CaptionML=ENU=Batch Name }
+      { 1000000005;TextBox;3410 ;1650 ;2310 ;440  ;InPage=-1;
+                                                   SourceExpr="G_Document No." }
+      { 1000000006;Label  ;0    ;1650 ;3300 ;440  ;ParentControl=1000000005;
+                                                   CaptionML=ENU=Document No. }
+    }
+  }
+  CODE
+  {
+    VAR
+      SalesPerson@1000000028 : Record 13;
+      DataportFileName@1000000000 : Text[80];
+      GlobalFile@1000000001 : File;
+      Counter@1000000002 : Integer;
+      GlobalError@1000000003 : Boolean;
+      AsciiStr@1000000004 : Text[250];
+      AnsiStr@1000000005 : Text[250];
+      "G_Account Type"@1000000006 : Text[1024];
+      "G_Document Type"@1000000007 : Text[1024];
+      "G_Document No."@1000000008 : Text[1024];
+      "G_Account No."@1000000010 : Text[1024];
+      G_Description@1000000011 : Text[1024];
+      G_Amount@1000000012 : Text[1024];
+      "G_Posting Date"@1000000013 : Text[1024];
+      G_JnlTemplateName@1000000019 : Code[10];
+      G_JnlBatchName@1000000020 : Code[10];
+      G_LineNo@1000000021 : Integer;
+      Text001@1000000022 : TextConst 'ENU=Template and Batch Name must be entered.';
+      Text002@1000000023 : TextConst 'ENU=Gen. Journal Template %1, Batch %2 contains entries. Select OK to delete these entries.';
+      Text003@1000000024 : TextConst 'ENU=Processing Cancelled.';
+      IGNORE@1000000025 : Text[1024];
+      "G_Salespers./Purch. Code"@1000000026 : Text[1024];
+      "G_Payment Terms Code"@1000000027 : Text[1024];
+      BalanceAcc@1000000029 : Code[20];
+      DepCode@1000000030 : Code[20];
+      G_Dim1@1000000031 : Text[1024];
+      G_Dim2@1000000032 : Text[1024];
+      G_Dim4@1000000036 : Text[1024];
+      GenJnlBatch@1000000033 : Record 232;
+      DimensionValue@1000000034 : Record 349;
+      GLAccount@1000000035 : Record 15;
+      JnlLineDim@1000000037 : Record 356;
+      GLSetup@1000000038 : Record 98;
+      Dim4Code@1000000039 : Code[20];
+      ImportColumn@1000000009 : ARRAY [30] OF Text[1024];
+      Text50001@1000000040 : TextConst 'ENU=%1 - %2';
+      Text50002@1000000018 : TextConst 'ENU=Unable to evaluate value.';
+      Text50003@1000000017 : TextConst 'ENU="  Value needs to be of type ""%1"""';
+      Text50004@1000000016 : TextConst 'ENU="  Value needs to be of type ""Code"" and have a maximum length of ""%1"""';
+      Text50005@1000000015 : TextConst 'ENU="  Value must not be blank."';
+      Text50006@1000000014 : TextConst 'ENU="  Value ""%1"" is not setup in master table."';
+
+    PROCEDURE CreateErrorLog@41(P_FileName@1000000000 : Text[250]);
+    VAR
+      L_FileName@1000000001 : Text[250];
+    BEGIN
+      GlobalError := FALSE;
+
+      P_FileName := DELCHR(P_FileName, '>', '.');
+      P_FileName := P_FileName + '.err.html';
+
+      IF EXISTS(P_FileName) THEN
+        ERASE(P_FileName);
+
+      GlobalFile.WRITEMODE(TRUE);
+      GlobalFile.TEXTMODE(TRUE);
+      GlobalFile.CREATE(P_FileName);
+      GlobalFile.WRITE('<html><body><table border=1>'+
+          '<tr><th>Record</th><th>Key</th><th>Field</th><th>Value</th><th>Description</th></tr>');
+    END;
+
+    PROCEDURE ErrMsg@38(InsText1@1000000000 : Text[1024];InsText2@1000000001 : Text[1024];InsText3@1000000002 : Text[1024];InsText4@1000000003 : Text[1024];InsText5@1000000004 : Text[1024]);
+    BEGIN
+      GlobalFile.WRITE('<tr><td>'+InsText1+'</td>'
+                   +'<td>'+InsText2+'</td>'
+                   +'<td>'+InsText3+'</td>'
+                   +'<td>'+InsText4+'</td>'
+                   +'<td>'+InsText5+'</td></tr>');
+
+      GlobalError := TRUE;
+    END;
+
+    PROCEDURE CloseErrorLog@47();
+    VAR
+      L_FileName@1000000000 : Text[250];
+    BEGIN
+      L_FileName := GlobalFile.NAME;
+
+      GlobalFile.WRITE('</table></body></html>');
+      GlobalFile.CLOSE;
+
+      IF NOT GlobalError THEN
+        ERASE(L_FileName)
+      ELSE
+        IF CONFIRM('One or more errors occured.  Do you wish to open the error log file?') THEN
+          HYPERLINK(L_FileName);
+    END;
+
+    PROCEDURE InsertOtherDimensions@1000000000(CurrGenJnlLine@1000000000 : Record 81;DimCode@1000000002 : Code[20];DimValueCode@1000000001 : Code[20]);
+    VAR
+      JnlLineDim@1000000003 : Record 356;
+      DimValue@1000000004 : Record 349;
+    BEGIN
+      // Column 20..25 - Shortcut Dimension 3 Code .. Shortcut Dimension 8 Code
+      IF (DimValueCode <> '') AND (STRLEN(DimValueCode) <= MAXSTRLEN(JnlLineDim."Dimension Value Code")) THEN BEGIN
+        IF (DimValue.GET(DimCode,DimValueCode)) THEN BEGIN
+          JnlLineDim.INIT;
+          JnlLineDim."Table ID" := DATABASE::"Gen. Journal Line";
+          JnlLineDim."Journal Template Name" := CurrGenJnlLine."Journal Template Name";
+          JnlLineDim."Journal Batch Name" := CurrGenJnlLine."Journal Batch Name";
+          JnlLineDim."Journal Line No." := CurrGenJnlLine."Line No.";
+          JnlLineDim."Dimension Code" := DimCode;
+          JnlLineDim."Dimension Value Code" := DimValueCode;
+          IF NOT JnlLineDim.INSERT THEN
+            JnlLineDim.MODIFY;
+        END ELSE
+          ErrMsg('Gen. Journal Line',
+                 STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+                 'Dimension Value Code',DimValueCode,
+                 STRSUBSTNO(Text50002 + Text50006,DimValueCode));
+      END ELSE
+        ErrMsg('Gen. Journal Line',
+               STRSUBSTNO(ImportColumn[4],ImportColumn[7]),
+               'Dimension Value Code',DimValueCode,
+               STRSUBSTNO(Text50002 + Text50004,MAXSTRLEN(DimValueCode)));
+    END;
+
+    BEGIN
+    END.
+  }
+}
+
